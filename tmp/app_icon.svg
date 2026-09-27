@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b45d0" />
+      <stop offset="50%" stop-color="#0632a8" />
+      <stop offset="100%" stop-color="#021a64" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background squircle -->
+  <rect width="512" height="512" rx="128" fill="url(#blueGradient)" />
+
+  <g fill="#FFFFFF">
+    <!-- Left Eye: Vertical Capsule -->
+    <rect x="210" y="224" width="28" height="56" rx="14" />
+
+    <!-- Right Eye: Vertical Capsule -->
+    <rect x="274" y="224" width="28" height="56" rx="14" />
+
+    <!-- Main Goony G Character -->
+    <path d="M 314 262 C 303 262, 294 271, 294 282 C 294 293, 303 302, 314 302 L 358 302 C 378 302, 396 320, 396 342 C 396 384, 344 424, 256 424 C 158 424, 88 348, 88 256 C 88 158, 158 88, 256 88 C 282 88, 308 94, 328 104 C 336 94, 350 82, 362 90 C 368 94, 366 104, 358 112 C 368 112, 380 118, 384 130 C 388 142, 382 154, 372 162 C 380 178, 378 198, 362 216 C 346 230, 326 232, 310 220 C 292 206, 276 174, 256 174 C 210 174, 174 210, 174 256 C 174 302, 210 338, 256 338 C 284 338, 310 324, 324 302 C 328 290, 330 274, 324 262 Z" />
+  </g>
+</svg>

@@ -1,0 +1,8 @@
+{
+  "name": "Goony 1.0",
+  "description": "Native media vault and streaming hub with multi-quality video player, photoset gallery, and creator manager.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
