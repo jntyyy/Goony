@@ -59,6 +59,7 @@ fun BookmarksScreen(
     val activeInlineVideo by viewModel.activeInlineVideo.collectAsStateWithLifecycle()
 
     val actorsMap = remember(actors) { actors.associate { it.id to it.name } }
+    val fullActorsMap = remember(actors) { actors.associateBy { it.id } }
     val studiosMap = remember(studios) { studios.associate { it.id to it.name } }
 
     var isSearchExpanded by remember { mutableStateOf(false) }
@@ -352,6 +353,7 @@ fun BookmarksScreen(
                             link = link,
                             actorsMap = actorsMap,
                             studiosMap = studiosMap,
+                            fullActorsMap = fullActorsMap,
                             isBookmarked = true,
                             isActiveCard = activeOverlayCardId == link.id,
                             onActivate = { activeOverlayCardId = link.id },
@@ -367,6 +369,8 @@ fun BookmarksScreen(
                             },
                             onEdit = { viewModel.navigateTo(ScreenState.AddEditLink(link.id)) },
                             onDelete = { viewModel.deleteLink(link.id) },
+                            onActorClick = { actorId -> viewModel.navigateTo(ScreenState.ActorScenes(actorId)) },
+                            onStudioClick = { studioId -> viewModel.navigateTo(ScreenState.StudioScenes(studioId)) },
                             resolvingStatus = resolvingStatus,
                             isResolvingThisCard = resolvingCardId == link.id,
                             resolutionError = if (resolvingCardId == link.id) videoResolutionError else null,

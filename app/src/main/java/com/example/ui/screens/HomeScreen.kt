@@ -79,11 +79,11 @@ fun HomeScreen(
         when (currentScreen) {
             is ScreenState.ActorScenes -> {
                 val actorId = (currentScreen as ScreenState.ActorScenes).actorId
-                links.filter { it.actorIds.contains(actorId) }
+                links.filter { it.actorIds.contains(actorId) || (targetActor != null && it.actorIds.contains(targetActor.name)) }
             }
             is ScreenState.StudioScenes -> {
                 val studioId = (currentScreen as ScreenState.StudioScenes).studioId
-                links.filter { it.studioIds.contains(studioId) }
+                links.filter { it.studioIds.contains(studioId) || (targetStudio != null && it.studioIds.contains(targetStudio.name)) }
             }
             else -> links
         }
@@ -92,6 +92,9 @@ fun HomeScreen(
     // O(1) Precomputed Fast Lookup Maps - computed once at Screen level on data change
     val actorsMap = remember(actors) {
         actors.associate { it.id to it.name }
+    }
+    val fullActorsMap = remember(actors) {
+        actors.associateBy { it.id }
     }
     val studiosMap = remember(studios) {
         studios.associate { it.id to it.name }
@@ -183,6 +186,14 @@ fun HomeScreen(
                         val headerTitle = when {
                             targetActor != null -> targetActor.name
                             targetStudio != null -> targetStudio.name
+                            currentScreen is ScreenState.ActorScenes -> {
+                                val id = (currentScreen as ScreenState.ActorScenes).actorId
+                                actorsMap[id] ?: id
+                            }
+                            currentScreen is ScreenState.StudioScenes -> {
+                                val id = (currentScreen as ScreenState.StudioScenes).studioId
+                                studiosMap[id] ?: id
+                            }
                             else -> "Goony"
                         }
                         Text(
@@ -209,7 +220,7 @@ fun HomeScreen(
                                 contentDescription = "Close Search"
                             )
                         }
-                    } else if (targetActor != null || targetStudio != null) {
+                    } else if (targetActor != null || targetStudio != null || currentScreen is ScreenState.ActorScenes || currentScreen is ScreenState.StudioScenes) {
                         IconButton(
                             onClick = { viewModel.navigateBack() },
                             modifier = Modifier.testTag("back_button")
@@ -455,6 +466,7 @@ fun HomeScreen(
                             link = link,
                             actorsMap = actorsMap,
                             studiosMap = studiosMap,
+                            fullActorsMap = fullActorsMap,
                             isBookmarked = isBookmarked,
                             isActiveCard = isActive,
                             onActivate = { activeOverlayCardId = link.id },
@@ -473,6 +485,12 @@ fun HomeScreen(
                             },
                             onDelete = {
                                 viewModel.deleteLink(link.id)
+                            },
+                            onActorClick = { actorId ->
+                                viewModel.navigateTo(ScreenState.ActorScenes(actorId))
+                            },
+                            onStudioClick = { studioId ->
+                                viewModel.navigateTo(ScreenState.StudioScenes(studioId))
                             },
                             resolvingStatus = resolvingStatus,
                             isResolvingThisCard = resolvingCardId == link.id,

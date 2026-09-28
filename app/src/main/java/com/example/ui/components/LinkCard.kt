@@ -9,7 +9,10 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
@@ -42,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,7 +68,8 @@ private enum class CardActionMenuState {
     CLOSED,
     MAIN_MENU,
     QUALITY_MENU,
-    DELETE_CONFIRM
+    DELETE_CONFIRM,
+    ACTORS_MENU
 }
 
 @Composable
@@ -71,6 +77,7 @@ fun LinkCard(
     link: LinkEntity,
     actorsMap: Map<String, String> = emptyMap(),
     studiosMap: Map<String, String> = emptyMap(),
+    fullActorsMap: Map<String, ActorEntity> = emptyMap(),
     isBookmarked: Boolean = false,
     isActiveCard: Boolean = false,
     onActivate: () -> Unit = {},
@@ -80,6 +87,8 @@ fun LinkCard(
     onOpenGallery: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onActorClick: (actorId: String) -> Unit = {},
+    onStudioClick: (studioId: String) -> Unit = {},
     resolvingStatus: String? = null,
     isResolvingThisCard: Boolean = false,
     resolutionError: String? = null,
@@ -103,6 +112,7 @@ fun LinkCard(
     val bounceScale = remember { androidx.compose.animation.core.Animatable(1f) }
 
     var bounceJob: kotlinx.coroutines.Job? by remember { mutableStateOf(null) }
+    var showAllActorsPopup by remember { mutableStateOf(false) }
 
     fun triggerBounce() {
         bounceJob?.cancel()
@@ -141,9 +151,11 @@ fun LinkCard(
 
         if (isOverlayActive) {
             // Dismiss instantly on second click, even if clicked extremely fast!
+            subMenuState = null
             onDismissActive()
         } else {
             // Open and trigger bouncy pop animation instantly on first click!
+            subMenuState = CardActionMenuState.MAIN_MENU
             triggerBounce()
             onActivate()
         }
@@ -152,19 +164,27 @@ fun LinkCard(
     fun handleScrimTap() {
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         
-        if (currentMenuState != CardActionMenuState.MAIN_MENU) {
+        if (currentMenuState == CardActionMenuState.ACTORS_MENU) {
+            subMenuState = null
+            onDismissActive()
+        } else if (currentMenuState != CardActionMenuState.MAIN_MENU) {
             subMenuState = CardActionMenuState.MAIN_MENU
         } else {
             // Close instantly when clicking on the scrim background
+            subMenuState = null
             onDismissActive()
         }
     }
 
     // Handle System Back button when overlay is open (returns to MAIN_MENU from submenus, or closes)
     BackHandler(enabled = isOverlayActive) {
-        if (currentMenuState != CardActionMenuState.MAIN_MENU && currentMenuState != CardActionMenuState.CLOSED) {
+        if (currentMenuState == CardActionMenuState.ACTORS_MENU) {
+            subMenuState = null
+            onDismissActive()
+        } else if (currentMenuState != CardActionMenuState.MAIN_MENU && currentMenuState != CardActionMenuState.CLOSED) {
             subMenuState = CardActionMenuState.MAIN_MENU
         } else {
+            subMenuState = null
             onDismissActive()
         }
     }
@@ -492,6 +512,73 @@ fun LinkCard(
                             }
                         )
                     }
+
+                    CardActionMenuState.ACTORS_MENU -> {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // The other actors list (excluding the first one)
+                            link.actorIds.drop(1).forEach { actorId ->
+                                val actorName = actorsMap[actorId] ?: actorId
+                                val actorImg = fullActorsMap[actorId]?.imageUrl ?: ""
+                                
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier
+                                        .padding(horizontal = 4.dp)
+                                        .width(72.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable {
+                                            subMenuState = null
+                                            onDismissActive()
+                                            onActorClick(actorId)
+                                        }
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(54.dp)
+                                            .clip(CircleShape)
+                                            .background(palette.surface)
+                                            .border(2.dp, accent.copy(alpha = 0.35f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (actorImg.isNotEmpty()) {
+                                            AsyncImage(
+                                                model = actorImg,
+                                                contentDescription = actorName,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.AccountCircle,
+                                                contentDescription = null,
+                                                tint = palette.textMuted,
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = actorName,
+                                        color = palette.textPrimary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -584,8 +671,8 @@ fun LinkCard(
                     }
                 }
             }
-            }
         }
+    }
 
         // ========================================================
         // 2. Native Material 3 UI Metadata Container
@@ -611,36 +698,97 @@ fun LinkCard(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val actorGradient = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary
+                        if (link.actorIds.isEmpty()) {
+                            Text(
+                                text = "Scene",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.15.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
-                        )
-                        Text(
-                            text = actorsDisplayName.ifEmpty { "Scene" },
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                brush = actorGradient,
-                                letterSpacing = 0.15.sp
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
+                        } else {
+                            val firstActorId = link.actorIds[0]
+                            val firstActorName = actorsMap[firstActorId] ?: firstActorId
+                            
+                            Row(
+                                modifier = Modifier.weight(1f, fill = false),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = firstActorName,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.15.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable {
+                                            subMenuState = null
+                                            onDismissActive()
+                                            onActorClick(firstActorId)
+                                        }
+                                        .padding(horizontal = 2.dp, vertical = 2.dp)
+                                        .weight(1f, fill = false)
+                                )
+                                
+                                if (link.actorIds.size > 1) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .clickable {
+                                                subMenuState = CardActionMenuState.ACTORS_MENU
+                                                onActivate()
+                                                triggerBounce()
+                                            }
+                                            .testTag("more_actors_button"),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = "More Actors",
+                                            tint = accent,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.width(12.dp))
 
-                        Text(
-                            text = studioName,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Normal,
-                                letterSpacing = 0.2.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        val firstStudioId = link.studioIds.firstOrNull()
+                        if (studioName.isNotEmpty()) {
+                            Text(
+                                text = studioName,
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Normal,
+                                    letterSpacing = 0.2.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable(enabled = firstStudioId != null) {
+                                        if (firstStudioId != null) {
+                                            subMenuState = null
+                                            onDismissActive()
+                                            onStudioClick(firstStudioId)
+                                        }
+                                    }
+                                    .padding(horizontal = 2.dp, vertical = 2.dp)
+                            )
+                        }
                     }
 
                     // Row 2: Bottom-Left (Title) | Bottom-Right (Date)
