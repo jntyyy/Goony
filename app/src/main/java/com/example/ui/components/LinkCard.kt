@@ -253,9 +253,9 @@ fun LinkCard(
     )
     val coverScale by animateFloatAsState(
         targetValue = if (isOverlayActive) 1.15f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = 0.45f,
-            stiffness = Spring.StiffnessMedium
+        animationSpec = tween(
+            durationMillis = 280,
+            easing = FastOutSlowInEasing
         ),
         label = "cover_scale"
     )

@@ -474,17 +474,19 @@ fun switchAppIcon(context: android.content.Context, styleIndex: Int) {
         }
     }
 
-    // Programmatically restart the application to apply the launcher icon change immediately
+    // Programmatically restart the application via the newly enabled alias explicitly to apply the icon change immediately
     try {
-        val intent = packageManager.getLaunchIntentForPackage(packageName)
-        if (intent != null) {
-            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            context.startActivity(intent)
-            if (context is android.app.Activity) {
-                context.finish()
-            }
-            java.lang.System.exit(0)
+        val targetAlias = aliases[styleIndex]
+        val intent = android.content.Intent().apply {
+            setClassName(packageName, targetAlias)
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
+        context.startActivity(intent)
+        if (context is android.app.Activity) {
+            context.finish()
+        }
+        // Force close and kill to let Android OS apply the launcher icon immediately!
+        android.os.Process.killProcess(android.os.Process.myPid())
     } catch (e: Exception) {
         e.printStackTrace()
     }
