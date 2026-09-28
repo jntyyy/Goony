@@ -99,12 +99,16 @@ fun DataBackupSection(
                             copiedToClipboard = false
                         }
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Export to JSON", fontWeight = FontWeight.Medium)
+                    Text("Export Data", fontWeight = FontWeight.SemiBold)
                 }
 
                 AnimatedVisibility(visible = exportedData.isNotBlank()) {
@@ -212,14 +216,15 @@ fun DataBackupSection(
                 Button(
                     onClick = { showImportDialog = true },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Outlined.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Import from JSON", fontWeight = FontWeight.Medium)
+                    Text("Import Data", fontWeight = FontWeight.SemiBold)
                 }
 
                 importStatusMessage?.let { status ->

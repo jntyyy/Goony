@@ -114,13 +114,16 @@ fun IntegrationsDropdownDebridSection(
                             Icon(
                                 imageVector = Icons.Outlined.Cloud,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .padding(start = 10.dp)
+                                    .size(22.dp)
                             )
                         },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded)
                         },
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(28.dp),
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                         modifier = Modifier
                             .menuAnchor()
@@ -129,7 +132,8 @@ fun IntegrationsDropdownDebridSection(
 
                     ExposedDropdownMenu(
                         expanded = isDropdownExpanded,
-                        onDismissRequest = { isDropdownExpanded = false }
+                        onDismissRequest = { isDropdownExpanded = false },
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         DebridServiceOption.values().forEach { option ->
                             val isCurrentSelected = selectedService == option
@@ -147,20 +151,20 @@ fun IntegrationsDropdownDebridSection(
                                     ) {
                                         Text(
                                             text = option.title,
-                                            fontWeight = if (isCurrentSelected) FontWeight.Bold else FontWeight.Normal,
+                                            fontWeight = if (isCurrentSelected) FontWeight.Bold else FontWeight.Medium,
                                             color = if (isCurrentSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                         )
                                         if (isOptionConfigured) {
                                             Surface(
-                                                shape = RoundedCornerShape(6.dp),
+                                                shape = CircleShape,
                                                 color = Color(0xFF10B981).copy(alpha = 0.15f)
                                             ) {
                                                 Text(
                                                     text = "Active",
                                                     fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Medium,
+                                                    fontWeight = FontWeight.SemiBold,
                                                     color = Color(0xFF10B981),
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                                 )
                                             }
                                         }
@@ -176,7 +180,10 @@ fun IntegrationsDropdownDebridSection(
                                 onClick = {
                                     selectedService = option
                                     isDropdownExpanded = false
-                                }
+                                },
+                                modifier = Modifier
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    .clip(RoundedCornerShape(12.dp))
                             )
                         }
                     }
@@ -203,7 +210,7 @@ fun IntegrationsDropdownDebridSection(
                         )
                     }
 
-                    // Native Paste Button
+                    // Native Rounded Paste Button
                     FilledTonalButton(
                         onClick = {
                             clipboardManager.getText()?.text?.let { clipboardText ->
@@ -212,16 +219,16 @@ fun IntegrationsDropdownDebridSection(
                                 }
                             }
                         },
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.ContentPaste,
                             contentDescription = "Paste",
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Paste", fontSize = 13.sp)
+                        Text("Paste", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
@@ -230,6 +237,16 @@ fun IntegrationsDropdownDebridSection(
                     onValueChange = onActiveKeyChange,
                     label = { Text("${selectedService.title} Token") },
                     placeholder = { Text("Paste ${selectedService.title} API token here...") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Key,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(start = 10.dp)
+                                .size(22.dp)
+                        )
+                    },
                     visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { showApiKey = !showApiKey }) {
@@ -246,7 +263,7 @@ fun IntegrationsDropdownDebridSection(
                         )
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(28.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("debrid_api_key_input")

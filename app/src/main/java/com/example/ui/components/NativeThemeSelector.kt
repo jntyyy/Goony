@@ -60,45 +60,45 @@ fun NativeThemeSelector(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         options.forEach { option ->
             val isSelected = selectedTheme.equals(option.id, ignoreCase = true)
             val containerColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-                animationSpec = tween(200),
+                targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.30f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
+                animationSpec = tween(220),
                 label = "theme_card_bg"
             )
             val borderColor by animateColorAsState(
                 targetValue = if (isSelected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                animationSpec = tween(200),
+                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                animationSpec = tween(220),
                 label = "theme_card_border"
             )
 
             Surface(
                 onClick = { onSelectTheme(option.id) },
-                shape = RoundedCornerShape(16.dp),
+                shape = CircleShape,
                 color = containerColor,
-                border = androidx.compose.foundation.BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor),
+                border = androidx.compose.foundation.BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .padding(horizontal = 14.dp, vertical = 7.dp)
                         .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Preview Icon Swatch
+                    // Preview Icon Swatch (Slimmer & Fully Circular)
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(34.dp)
                             .clip(CircleShape)
                             .background(option.previewBgColor)
                             .border(
                                 width = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
                                 shape = CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -107,23 +107,23 @@ fun NativeThemeSelector(
                             imageVector = option.icon,
                             contentDescription = null,
                             tint = if (option.id == "Light") MaterialTheme.colorScheme.primary else Color(0xFFE2E8F0),
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
 
                     Text(
                         text = option.title,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                            fontSize = 16.sp
+                            fontSize = 15.sp
                         ),
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     // Native Radio Button Selection
                     RadioButton(
@@ -131,7 +131,7 @@ fun NativeThemeSelector(
                         onClick = { onSelectTheme(option.id) },
                         colors = RadioButtonDefaults.colors(
                             selectedColor = MaterialTheme.colorScheme.primary,
-                            unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                     )
                 }

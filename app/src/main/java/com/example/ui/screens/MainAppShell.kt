@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -15,12 +16,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.R
 import com.example.ui.ActiveVideoPlayback
 import com.example.ui.MainViewModel
 import com.example.ui.ScreenState
@@ -40,11 +44,18 @@ fun MainAppShell(viewModel: MainViewModel) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     val currentScreen by viewModel.screenState.collectAsStateWithLifecycle()
+    val navDirection by viewModel.navDirection.collectAsStateWithLifecycle()
     val activeVideo by viewModel.activeVideo.collectAsStateWithLifecycle()
     val activeLightbox by viewModel.activeLightbox.collectAsStateWithLifecycle()
     val resolvingStatus by viewModel.resolvingVideoStatus.collectAsStateWithLifecycle()
     val resolvingCardId by viewModel.resolvingCardId.collectAsStateWithLifecycle()
     val videoResolutionError by viewModel.videoResolutionError.collectAsStateWithLifecycle()
+
+    // Smooth App Launch Entrance Animation (Matches Add Scene motion)
+    var appEntranceVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        appEntranceVisible = true
+    }
 
     // Handle back button press
     BackHandler(enabled = true) {
@@ -82,7 +93,12 @@ fun MainAppShell(viewModel: MainViewModel) {
                             modifier = Modifier.size(38.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Filled.VideoLibrary, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                    contentDescription = "Goony Logo",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
                         }
                         Text("Goony", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = palette.textPrimary)
@@ -255,54 +271,40 @@ fun MainAppShell(viewModel: MainViewModel) {
             }
         }
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Active Screen View with Smooth Motion Transitions
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AnimatedContent(
-                        targetState = currentScreen,
-                        transitionSpec = {
-                            val isOpeningAddScreen = targetState is ScreenState.AddEditLink ||
-                                    targetState is ScreenState.AddEditActor ||
-                                    targetState is ScreenState.AddEditStudio ||
-                                    targetState is ScreenState.AddEditCoomer ||
-                                    targetState is ScreenState.AddEditHanime ||
-                                    targetState is ScreenState.ActorScenes ||
-                                    targetState is ScreenState.StudioScenes ||
-                                    targetState is ScreenState.CoomerDetail ||
-                                    targetState is ScreenState.HanimeDetail
-
-                            val isLeavingAddScreen = initialState is ScreenState.AddEditLink ||
-                                    initialState is ScreenState.AddEditActor ||
-                                    initialState is ScreenState.AddEditStudio ||
-                                    initialState is ScreenState.AddEditCoomer ||
-                                    initialState is ScreenState.AddEditHanime ||
-                                    initialState is ScreenState.ActorScenes ||
-                                    initialState is ScreenState.StudioScenes ||
-                                    initialState is ScreenState.CoomerDetail ||
-                                    initialState is ScreenState.HanimeDetail
-
-                            if (isOpeningAddScreen) {
-                                (slideInVertically(animationSpec = tween(320, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
-                                        fadeIn(animationSpec = tween(280)))
-                                    .togetherWith(
-                                        slideOutVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
-                                                fadeOut(animationSpec = tween(220))
-                                    )
-                            } else if (isLeavingAddScreen) {
-                                (slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
-                                        fadeIn(animationSpec = tween(240)))
-                                    .togetherWith(
-                                        slideOutVertically(animationSpec = tween(300, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
-                                                fadeOut(animationSpec = tween(240))
-                                    )
-                            } else {
-                                (fadeIn(animationSpec = tween(240)) + scaleIn(initialScale = 0.98f, animationSpec = tween(240)))
-                                    .togetherWith(fadeOut(animationSpec = tween(180)))
-                            }
-                        },
-                        label = "screen_motion_transition"
-                    ) { screen ->
+        AnimatedVisibility(
+            visible = appEntranceVisible,
+            enter = slideInVertically(
+                animationSpec = tween(340, easing = FastOutSlowInEasing)
+            ) { fullHeight -> fullHeight / 5 } + fadeIn(animationSpec = tween(300)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Active Screen View with Smooth Motion Transitions
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AnimatedContent(
+                            targetState = currentScreen,
+                            transitionSpec = {
+                                if (navDirection == MainViewModel.NavigationDirection.BACK) {
+                                    // Smooth Back Transition: outgoing screen slides down, incoming screen slides in from top
+                                    (slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
+                                            fadeIn(animationSpec = tween(240)))
+                                        .togetherWith(
+                                            slideOutVertically(animationSpec = tween(300, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
+                                                    fadeOut(animationSpec = tween(240))
+                                        )
+                                } else {
+                                    // Smooth Forward / Open Transition: incoming screen slides up from bottom (matches Add Scene entrance), outgoing slides up
+                                    (slideInVertically(animationSpec = tween(320, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
+                                            fadeIn(animationSpec = tween(280)))
+                                        .togetherWith(
+                                            slideOutVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
+                                                    fadeOut(animationSpec = tween(220))
+                                        )
+                                }
+                            },
+                            label = "screen_motion_transition"
+                        ) { screen ->
                         when (screen) {
                             is ScreenState.Home -> HomeScreen(
                                 viewModel = viewModel,
@@ -343,6 +345,7 @@ fun MainAppShell(viewModel: MainViewModel) {
                     defaultHeaders = video.headers,
                     initialPositionMs = video.initialPositionMs,
                     startInLandscape = video.startInLandscape,
+                    exoPlayer = viewModel.sharedPlayerManager.getPlayer(),
                     onClose = { viewModel.closeVideo() }
                 )
             }
@@ -436,4 +439,5 @@ fun MainAppShell(viewModel: MainViewModel) {
             }
         }
     }
+}
 }

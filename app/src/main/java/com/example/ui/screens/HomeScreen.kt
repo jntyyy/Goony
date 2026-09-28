@@ -101,9 +101,7 @@ fun HomeScreen(
     var showSortMenu by remember { mutableStateOf(false) }
     var activeOverlayCardId by remember { mutableStateOf<String?>(null) }
     var showEditActorDialog by remember { mutableStateOf(false) }
-    var showDeleteActorConfirm by remember { mutableStateOf(false) }
     var showEditStudioDialog by remember { mutableStateOf(false) }
-    var showDeleteStudioConfirm by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = viewModel.homeScrollIndex,
@@ -347,7 +345,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // Edit / Delete Actor/Studio Actions in Header
+                        // Edit Actor/Studio Action in Header
                         if (targetActor != null) {
                             IconButton(
                                 onClick = { showEditActorDialog = true },
@@ -358,16 +356,6 @@ fun HomeScreen(
                                     contentDescription = "Edit Actor"
                                 )
                             }
-                            IconButton(
-                                onClick = { showDeleteActorConfirm = true },
-                                modifier = Modifier.testTag("delete_actor_header_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DeleteOutline,
-                                    contentDescription = "Delete Actor",
-                                    tint = Color(0xFFEF4444)
-                                )
-                            }
                         } else if (targetStudio != null) {
                             IconButton(
                                 onClick = { showEditStudioDialog = true },
@@ -376,16 +364,6 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = Icons.Default.Edit,
                                     contentDescription = "Edit Studio"
-                                )
-                            }
-                            IconButton(
-                                onClick = { showDeleteStudioConfirm = true },
-                                modifier = Modifier.testTag("delete_studio_header_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DeleteOutline,
-                                    contentDescription = "Delete Studio",
-                                    tint = Color(0xFFEF4444)
                                 )
                             }
                         }
@@ -504,7 +482,8 @@ fun HomeScreen(
                             onCloseInlineVideo = { viewModel.closeInlineVideo(link.id) },
                             onFullscreenInlineVideo = { currentPos ->
                                 viewModel.openFullscreenFromInline(link.id, currentPos)
-                            }
+                            },
+                            exoPlayer = viewModel.sharedPlayerManager.getPlayer()
                         )
                     }
                 }
@@ -512,157 +491,273 @@ fun HomeScreen(
         }
     }
 
-    // Edit Actor Dialog
+    // Actor Details & Deletion Dialog
     if (showEditActorDialog && targetActor != null) {
-        var name by remember(targetActor) { mutableStateOf(targetActor.name) }
-        var imageUrl by remember(targetActor) { mutableStateOf(targetActor.imageUrl ?: "") }
+        var confirmDeleteActor by remember { mutableStateOf(false) }
 
         AlertDialog(
-            onDismissRequest = { showEditActorDialog = false },
-            title = { Text("Edit Actor") },
+            onDismissRequest = {
+                showEditActorDialog = false
+                confirmDeleteActor = false
+            },
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Actor Details",
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Static / Unchangeable Name Field matching Add Scene style
                     OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Actor Name *") },
+                        value = targetActor.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        label = { Text("Name") },
+                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                         shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier.fillMaxWidth().testTag("edit_actor_name_input")
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("actor_name_static_input")
                     )
+
+                    // Static / Unchangeable Image URL Field matching Add Scene style
                     OutlinedTextField(
-                        value = imageUrl,
-                        onValueChange = { imageUrl = it },
-                        label = { Text("Profile Image URL") },
+                        value = targetActor.imageUrl ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        label = { Text("Image URL") },
+                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                         shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("actor_image_static_input")
                     )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (name.isNotBlank()) {
-                            viewModel.saveActor(
-                                targetActor.copy(
-                                    name = name.trim(),
-                                    imageUrl = imageUrl.trim().ifEmpty { "" }
-                                )
+
+                    // Delete Actor and Linked Scenes Section (Circular Button)
+                    if (!confirmDeleteActor) {
+                        Button(
+                            onClick = { confirmDeleteActor = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFEF4444).copy(alpha = 0.12f),
+                                contentColor = Color(0xFFEF4444)
+                            ),
+                            shape = CircleShape,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .testTag("delete_actor_cascade_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
                             )
-                            showEditActorDialog = false
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Delete Actor & Linked Scenes",
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
-                    },
-                    enabled = name.isNotBlank()
-                ) {
-                    Text("Save")
+                    } else {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFEF4444).copy(alpha = 0.12f)
+                            ),
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    text = "Delete '${targetActor.name}' and all scenes referencing solely this actor? (Scenes with multiple actors will be preserved).",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFDC2626),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    TextButton(
+                                        onClick = { confirmDeleteActor = false },
+                                        shape = CircleShape
+                                    ) {
+                                        Text("Cancel")
+                                    }
+                                    Spacer(Modifier.width(6.dp))
+                                    Button(
+                                        onClick = {
+                                            showEditActorDialog = false
+                                            confirmDeleteActor = false
+                                            viewModel.deleteActorWithCascade(targetActor.id)
+                                            viewModel.navigateBack()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFFEF4444)
+                                        ),
+                                        shape = CircleShape
+                                    ) {
+                                        Text("Confirm Delete", color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
+            confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showEditActorDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    // Delete Actor Confirmation Dialog
-    if (showDeleteActorConfirm && targetActor != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteActorConfirm = false },
-            title = { Text("Delete Actor") },
-            text = { Text("Are you sure you want to delete '${targetActor.name}'?") },
-            confirmButton = {
-                Button(
+                TextButton(
                     onClick = {
-                        showDeleteActorConfirm = false
-                        viewModel.deleteActor(targetActor.id)
-                        viewModel.navigateBack()
+                        showEditActorDialog = false
+                        confirmDeleteActor = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                    shape = CircleShape
                 ) {
-                    Text("Delete", color = Color.White)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteActorConfirm = false }) {
-                    Text("Cancel")
+                    Text("Close")
                 }
             }
         )
     }
 
-    // Edit Studio Dialog
+    // Studio Details & Deletion Dialog
     if (showEditStudioDialog && targetStudio != null) {
-        var name by remember(targetStudio) { mutableStateOf(targetStudio.name) }
-        var logoUrl by remember(targetStudio) { mutableStateOf(targetStudio.logoUrl ?: "") }
+        var confirmDeleteStudio by remember { mutableStateOf(false) }
 
         AlertDialog(
-            onDismissRequest = { showEditStudioDialog = false },
-            title = { Text("Edit Studio") },
+            onDismissRequest = {
+                showEditStudioDialog = false
+                confirmDeleteStudio = false
+            },
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Studio Details",
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Static / Unchangeable Name Field matching Add Scene style
                     OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Studio Name *") },
+                        value = targetStudio.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        label = { Text("Name") },
+                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
                         shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier.fillMaxWidth().testTag("edit_studio_name_input")
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("studio_name_static_input")
                     )
-                    OutlinedTextField(
-                        value = logoUrl,
-                        onValueChange = { logoUrl = it },
-                        label = { Text("Logo Image URL") },
-                        shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (name.isNotBlank()) {
-                            viewModel.saveStudio(
-                                targetStudio.copy(
-                                    name = name.trim(),
-                                    logoUrl = logoUrl.trim().ifEmpty { null }
-                                )
-                            )
-                            showEditStudioDialog = false
-                        }
-                    },
-                    enabled = name.isNotBlank()
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditStudioDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 
-    // Delete Studio Confirmation Dialog
-    if (showDeleteStudioConfirm && targetStudio != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteStudioConfirm = false },
-            title = { Text("Delete Studio") },
-            text = { Text("Are you sure you want to delete '${targetStudio.name}'?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteStudioConfirm = false
-                        viewModel.deleteStudio(targetStudio.id)
-                        viewModel.navigateBack()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
-                ) {
-                    Text("Delete", color = Color.White)
+                    // Static / Unchangeable Image URL Field matching Add Scene style
+                    OutlinedTextField(
+                        value = targetStudio.logoUrl ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        label = { Text("Image URL") },
+                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                        shape = RoundedCornerShape(32.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("studio_image_static_input")
+                    )
+
+                    // Delete Studio and Linked Scenes Section (Circular Button)
+                    if (!confirmDeleteStudio) {
+                        Button(
+                            onClick = { confirmDeleteStudio = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFEF4444).copy(alpha = 0.12f),
+                                contentColor = Color(0xFFEF4444)
+                            ),
+                            shape = CircleShape,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .testTag("delete_studio_cascade_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Delete Studio & Linked Scenes",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    } else {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFEF4444).copy(alpha = 0.12f)
+                            ),
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    text = "Delete '${targetStudio.name}' and all associated scenes without exception?",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFDC2626),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    TextButton(
+                                        onClick = { confirmDeleteStudio = false },
+                                        shape = CircleShape
+                                    ) {
+                                        Text("Cancel")
+                                    }
+                                    Spacer(Modifier.width(6.dp))
+                                    Button(
+                                        onClick = {
+                                            showEditStudioDialog = false
+                                            confirmDeleteStudio = false
+                                            viewModel.deleteStudioWithCascade(targetStudio.id)
+                                            viewModel.navigateBack()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFFEF4444)
+                                        ),
+                                        shape = CircleShape
+                                    ) {
+                                        Text("Confirm Delete", color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
+            confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showDeleteStudioConfirm = false }) {
-                    Text("Cancel")
+                TextButton(
+                    onClick = {
+                        showEditStudioDialog = false
+                        confirmDeleteStudio = false
+                    },
+                    shape = CircleShape
+                ) {
+                    Text("Close")
                 }
             }
         )

@@ -95,6 +95,7 @@ fun GoPlayer(
     defaultHeaders: Map<String, String> = emptyMap(),
     initialPositionMs: Long = 0L,
     startInLandscape: Boolean = false,
+    exoPlayer: ExoPlayer? = null,
     onClose: () -> Unit
 ) {
     ExoPlayerOverlay(
@@ -104,6 +105,7 @@ fun GoPlayer(
         defaultHeaders = defaultHeaders,
         initialPositionMs = initialPositionMs,
         startInLandscape = startInLandscape,
+        exoPlayer = exoPlayer,
         onClose = onClose
     )
 }
@@ -188,12 +190,35 @@ fun ExoPlayerOverlay(
     defaultHeaders: Map<String, String> = emptyMap(),
     initialPositionMs: Long = 0L,
     startInLandscape: Boolean = false,
+    exoPlayer: ExoPlayer? = null,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    val fallbackPlayer = remember(context) {
+        if (exoPlayer == null) {
+            val loadControl = DefaultLoadControl.Builder()
+                .setBufferDurationsMs(10_000, 45_000, 500, 1_000)
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build()
+            val renderersFactory = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
+            ExoPlayer.Builder(context, renderersFactory)
+                .setLoadControl(loadControl)
+                .setSeekBackIncrementMs(10_000)
+                .setSeekForwardIncrementMs(10_000)
+                .build().apply { playWhenReady = true }
+        } else null
+    }
+    val activeExoPlayer = exoPlayer ?: fallbackPlayer!!
+
+    DisposableEffect(fallbackPlayer) {
+        onDispose {
+            fallbackPlayer?.release()
+        }
+    }
 
     // Auto rotate to landscape if requested from inline player transition
     LaunchedEffect(startInLandscape) {
@@ -356,7 +381,7 @@ fun ExoPlayerOverlay(
             }
     }
 
-    DisposableEffect(exoPlayer) {
+    DisposableEffect(activeExoPlayer) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
@@ -365,7 +390,7 @@ fun ExoPlayerOverlay(
                         isBuffering = false
                         errorMessage = null
                         errorDetails = null
-                        duration = exoPlayer.duration.coerceAtLeast(0L)
+                        duration = activeExoPlayer.duration.coerceAtLeast(0L)
                     }
                     Player.STATE_ENDED -> {
                         isBuffering = false
@@ -392,10 +417,9 @@ fun ExoPlayerOverlay(
             }
         }
 
-        exoPlayer.addListener(listener)
+        activeExoPlayer.addListener(listener)
         onDispose {
-            exoPlayer.removeListener(listener)
-            exoPlayer.release()
+            activeExoPlayer.removeListener(listener)
         }
     }
 
@@ -403,7 +427,7 @@ fun ExoPlayerOverlay(
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && activity != null) {
             try {
                 showControls = false
-                val format = exoPlayer.videoFormat
+                val format = activeExoPlayer.videoFormat
                 val rational = if (format != null && format.width > 0 && format.height > 0) {
                     val w = format.width
                     val h = format.height
@@ -429,30 +453,43 @@ fun ExoPlayerOverlay(
     }
 
     // Periodic time tracker for smooth seekbar updates
-    LaunchedEffect(exoPlayer, selectedQuality) {
+    LaunchedEffect(activeExoPlayer, selectedQuality) {
         while (true) {
             if (!isScrubbing && (System.currentTimeMillis() - lastSeekTime > 500L)) {
-                if (exoPlayer.playbackState == Player.STATE_READY || exoPlayer.isPlaying) {
-                    currentPos = exoPlayer.currentPosition.coerceAtLeast(0L)
-                    bufferedPos = exoPlayer.bufferedPosition.coerceAtLeast(0L)
-                    duration = exoPlayer.duration.coerceAtLeast(0L)
+                if (activeExoPlayer.playbackState == Player.STATE_READY || activeExoPlayer.isPlaying) {
+                    currentPos = activeExoPlayer.currentPosition.coerceAtLeast(0L)
+                    bufferedPos = activeExoPlayer.bufferedPosition.coerceAtLeast(0L)
+                    duration = activeExoPlayer.duration.coerceAtLeast(0L)
                 }
             } else {
-                duration = exoPlayer.duration.coerceAtLeast(0L)
-                bufferedPos = exoPlayer.bufferedPosition.coerceAtLeast(0L)
+                duration = activeExoPlayer.duration.coerceAtLeast(0L)
+                bufferedPos = activeExoPlayer.bufferedPosition.coerceAtLeast(0L)
             }
             delay(200)
         }
     }
 
     // Reconfigure media source on quality or subtitle change
-    LaunchedEffect(selectedQuality, selectedSubtitle) {
+    LaunchedEffect(selectedQuality, selectedSubtitle, activeExoPlayer) {
         val quality = selectedQuality ?: return@LaunchedEffect
         val url = quality.url.trim()
 
         if (url.isBlank()) {
             errorMessage = "Invalid Stream URL"
             errorDetails = "The provided media link is empty."
+            return@LaunchedEffect
+        }
+
+        val currentUri = activeExoPlayer.currentMediaItem?.localConfiguration?.uri?.toString()
+        if (currentUri == url && activeExoPlayer.playbackState != Player.STATE_IDLE) {
+            // Stream is already loaded and playing seamlessly!
+            errorMessage = null
+            errorDetails = null
+            isBuffering = activeExoPlayer.playbackState == Player.STATE_BUFFERING
+            duration = activeExoPlayer.duration.coerceAtLeast(0L)
+            if (!activeExoPlayer.isPlaying && activeExoPlayer.playbackState == Player.STATE_READY) {
+                activeExoPlayer.play()
+            }
             return@LaunchedEffect
         }
 
@@ -519,13 +556,13 @@ fun ExoPlayerOverlay(
             val mediaItem = mediaItemBuilder.build()
             val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
 
-            val resumePosition = currentPos
-            exoPlayer.setMediaSource(mediaSource)
-            exoPlayer.prepare()
+            val resumePosition = initialPositionMs
+            activeExoPlayer.setMediaSource(mediaSource)
+            activeExoPlayer.prepare()
             if (resumePosition > 0) {
-                exoPlayer.seekTo(resumePosition)
+                activeExoPlayer.seekTo(resumePosition)
             }
-            exoPlayer.play()
+            activeExoPlayer.play()
         } catch (e: Exception) {
             errorMessage = "Playback Setup Failed"
             errorDetails = e.message ?: "Could not build media source."
@@ -553,7 +590,7 @@ fun ExoPlayerOverlay(
                     val initialVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
                     val winAttributes = activity?.window?.attributes
                     val initialBrightness = if ((winAttributes?.screenBrightness ?: -1f) < 0f) 0.5f else winAttributes!!.screenBrightness
-                    val initialPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
+                    val initialPosition = activeExoPlayer.currentPosition.coerceAtLeast(0L)
 
                     var gestureType = 0 // 0: None yet, 1: Seek (horizontal), 2: Volume (vert left), 3: Brightness (vert right)
                     var hasMoved = false
@@ -578,6 +615,9 @@ fun ExoPlayerOverlay(
                                         1 // Horizontal Seek
                                     } else {
                                         if (isLeftSide) 2 else 3 // 2: Volume, 3: Brightness
+                                    }
+                                    if (gestureType == 2 || gestureType == 3) {
+                                        showControls = false
                                     }
                                 }
                             }
@@ -625,7 +665,7 @@ fun ExoPlayerOverlay(
                             // Released!
                             if (gestureType == 1) {
                                 // Finalize horizontal seek
-                                exoPlayer.seekTo(currentSeekTargetMs)
+                                activeExoPlayer.seekTo(currentSeekTargetMs)
                                 currentPos = currentSeekTargetMs
                                 lastSeekTime = System.currentTimeMillis()
                             } else if (gestureType == 2) {
@@ -645,13 +685,13 @@ fun ExoPlayerOverlay(
                                 if (now - lastTapTime < 320L && distFromLastTap < 100f) {
                                     // Double Tap!
                                     if (startX < screenWidth * 0.5f) {
-                                        val target = (exoPlayer.currentPosition - 10000).coerceAtLeast(0L)
-                                        exoPlayer.seekTo(target)
+                                        val target = (activeExoPlayer.currentPosition - 10000).coerceAtLeast(0L)
+                                        activeExoPlayer.seekTo(target)
                                         currentPos = target
                                         lastSeekTime = System.currentTimeMillis()
                                     } else {
-                                        val target = (exoPlayer.currentPosition + 10000).coerceAtMost(duration)
-                                        exoPlayer.seekTo(target)
+                                        val target = (activeExoPlayer.currentPosition + 10000).coerceAtMost(duration)
+                                        activeExoPlayer.seekTo(target)
                                         currentPos = target
                                         lastSeekTime = System.currentTimeMillis()
                                     }
@@ -674,7 +714,7 @@ fun ExoPlayerOverlay(
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
-                    player = exoPlayer
+                    player = activeExoPlayer
                     useController = false
                     keepScreenOn = true
                     this.resizeMode = resizeMode
@@ -685,9 +725,14 @@ fun ExoPlayerOverlay(
                 }
             },
             update = { playerView ->
-                playerView.player = exoPlayer
+                if (playerView.player != activeExoPlayer) {
+                    playerView.player = activeExoPlayer
+                }
                 playerView.resizeMode = if (isInPipMode) AspectRatioFrameLayout.RESIZE_MODE_FIT else resizeMode
                 playerView.keepScreenOn = true
+            },
+            onReset = { playerView ->
+                playerView.player = null
             },
             modifier = Modifier.fillMaxSize()
         )
@@ -770,8 +815,8 @@ fun ExoPlayerOverlay(
                                     errorMessage = null
                                     errorDetails = null
                                     isBuffering = true
-                                    exoPlayer.prepare()
-                                    exoPlayer.play()
+                                    activeExoPlayer.prepare()
+                                    activeExoPlayer.play()
                                 },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = LocalAccentColor.current),
@@ -854,7 +899,16 @@ fun ExoPlayerOverlay(
                         .align(Alignment.TopCenter),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Back Button with enlarged circle
+                    Text(
+                        text = title,
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Back Button with enlarged circle on the TOP RIGHT
                     Box(
                         modifier = Modifier
                             .size(38.dp)
@@ -871,70 +925,6 @@ fun ExoPlayerOverlay(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = title,
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // Pop-Up Window / Picture in Picture Button
-                    IconButton(
-                        onClick = { enterPipMode() },
-                        modifier = Modifier.testTag("popup_player_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.PictureInPictureAlt,
-                            contentDescription = "Pop Up Window / Picture in Picture",
-                            tint = Color.White
-                        )
-                    }
-
-                    // External Player Button (MPV / VLC / System Player)
-                    IconButton(
-                        onClick = { openInExternalPlayer() },
-                        modifier = Modifier.testTag("open_external_player_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.OpenInNew,
-                            contentDescription = "Open in External Player (MPV/VLC)",
-                            tint = Color.White
-                        )
-                    }
-
-                    // Fullscreen / Landscape Rotation Toggle Button
-                    IconButton(
-                        onClick = { toggleOrientation() },
-                        modifier = Modifier.testTag("fullscreen_overlay_top_button")
-                    ) {
-                        Icon(
-                            imageVector = if (isLandscape) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
-                            contentDescription = "Fullscreen Landscape Mode",
-                            tint = Color.White
-                        )
-                    }
-
-                    // Aspect Ratio Button (Fit / Zoom / Stretch)
-                    IconButton(
-                        onClick = {
-                            resizeMode = when (resizeMode) {
-                                AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.AspectRatio,
-                            contentDescription = "Aspect Ratio",
-                            tint = Color.White
-                        )
-                    }
                 }
 
                 // Center Clean Media Controls (10s Rewind | Large Play/Pause | 10s Forward)
@@ -944,7 +934,7 @@ fun ExoPlayerOverlay(
                     horizontalArrangement = Arrangement.spacedBy(40.dp)
                 ) {
                     IconButton(
-                        onClick = { exoPlayer.seekTo((exoPlayer.currentPosition - 10000).coerceAtLeast(0L)) },
+                        onClick = { activeExoPlayer.seekTo((activeExoPlayer.currentPosition - 10000).coerceAtLeast(0L)) },
                         modifier = Modifier.size(52.dp)
                     ) {
                         Icon(
@@ -957,10 +947,10 @@ fun ExoPlayerOverlay(
 
                     IconButton(
                         onClick = {
-                            if (exoPlayer.isPlaying) {
-                                exoPlayer.pause()
+                            if (activeExoPlayer.isPlaying) {
+                                activeExoPlayer.pause()
                             } else {
-                                exoPlayer.play()
+                                activeExoPlayer.play()
                             }
                         },
                         modifier = Modifier
@@ -976,7 +966,7 @@ fun ExoPlayerOverlay(
                     }
 
                     IconButton(
-                        onClick = { exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(exoPlayer.duration)) },
+                        onClick = { activeExoPlayer.seekTo((activeExoPlayer.currentPosition + 10000).coerceAtMost(activeExoPlayer.duration)) },
                         modifier = Modifier.size(52.dp)
                     ) {
                         Icon(
@@ -1020,6 +1010,36 @@ fun ExoPlayerOverlay(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            // Pop-Up Window / Picture in Picture Button
+                            IconButton(
+                                onClick = { enterPipMode() },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .testTag("popup_player_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.PictureInPictureAlt,
+                                    contentDescription = "Pop Up Window / Picture in Picture",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            // External Player Button (MPV / VLC / System Player)
+                            IconButton(
+                                onClick = { openInExternalPlayer() },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .testTag("open_external_player_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.OpenInNew,
+                                    contentDescription = "Open in External Player (MPV/VLC)",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
                             // Fullscreen / Screen Rotation Toggle Button
                             IconButton(
                                 onClick = { toggleOrientation() },
@@ -1398,6 +1418,7 @@ fun InlineCardPlayer(
     qualities: List<StreamQuality>,
     subtitles: List<SubtitleTrack> = emptyList(),
     defaultHeaders: Map<String, String> = emptyMap(),
+    exoPlayer: ExoPlayer? = null,
     onClose: () -> Unit,
     onFullscreen: (currentPositionMs: Long) -> Unit,
     modifier: Modifier = Modifier
@@ -1407,6 +1428,28 @@ fun InlineCardPlayer(
         mutableStateOf(qualities.firstOrNull { it.isDefault } ?: qualities.firstOrNull())
     }
     var selectedSubtitle by remember(subtitles) { mutableStateOf<SubtitleTrack?>(null) }
+
+    val fallbackPlayer = remember(context) {
+        if (exoPlayer == null) {
+            val loadControl = DefaultLoadControl.Builder()
+                .setBufferDurationsMs(10_000, 45_000, 500, 1_000)
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build()
+            val renderersFactory = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
+            ExoPlayer.Builder(context, renderersFactory)
+                .setLoadControl(loadControl)
+                .setSeekBackIncrementMs(10_000)
+                .setSeekForwardIncrementMs(10_000)
+                .build().apply { playWhenReady = true }
+        } else null
+    }
+    val activeExoPlayer = exoPlayer ?: fallbackPlayer!!
+
+    DisposableEffect(fallbackPlayer) {
+        onDispose {
+            fallbackPlayer?.release()
+        }
+    }
 
     var showControls by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }
@@ -1459,30 +1502,7 @@ fun InlineCardPlayer(
         }
     }
 
-    val exoPlayer = remember(context) {
-        val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                /* minBufferMs = */ 10_000,
-                /* maxBufferMs = */ 45_000,
-                /* bufferForPlaybackMs = */ 500,
-                /* bufferForPlaybackAfterRebufferMs = */ 1_000
-            )
-            .setPrioritizeTimeOverSizeThresholds(true)
-            .build()
-
-        val renderersFactory = DefaultRenderersFactory(context)
-            .setEnableDecoderFallback(true)
-
-        ExoPlayer.Builder(context, renderersFactory)
-            .setLoadControl(loadControl)
-            .setSeekBackIncrementMs(10_000)
-            .setSeekForwardIncrementMs(10_000)
-            .build().apply {
-                playWhenReady = true
-            }
-    }
-
-    DisposableEffect(exoPlayer) {
+    DisposableEffect(activeExoPlayer) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
@@ -1491,7 +1511,7 @@ fun InlineCardPlayer(
                         isBuffering = false
                         errorMessage = null
                         errorDetails = null
-                        duration = exoPlayer.duration.coerceAtLeast(0L)
+                        duration = activeExoPlayer.duration.coerceAtLeast(0L)
                     }
                     Player.STATE_ENDED -> {
                         isBuffering = false
@@ -1512,32 +1532,31 @@ fun InlineCardPlayer(
             }
         }
 
-        exoPlayer.addListener(listener)
+        activeExoPlayer.addListener(listener)
         onDispose {
-            exoPlayer.removeListener(listener)
-            exoPlayer.release()
+            activeExoPlayer.removeListener(listener)
         }
     }
 
     // Periodic position updates
-    LaunchedEffect(exoPlayer, selectedQuality) {
+    LaunchedEffect(activeExoPlayer, selectedQuality) {
         while (true) {
             if (!isScrubbing && (System.currentTimeMillis() - lastSeekTime > 500L)) {
-                if (exoPlayer.playbackState == Player.STATE_READY || exoPlayer.isPlaying) {
-                    currentPos = exoPlayer.currentPosition.coerceAtLeast(0L)
-                    bufferedPos = exoPlayer.bufferedPosition.coerceAtLeast(0L)
-                    duration = exoPlayer.duration.coerceAtLeast(0L)
+                if (activeExoPlayer.playbackState == Player.STATE_READY || activeExoPlayer.isPlaying) {
+                    currentPos = activeExoPlayer.currentPosition.coerceAtLeast(0L)
+                    bufferedPos = activeExoPlayer.bufferedPosition.coerceAtLeast(0L)
+                    duration = activeExoPlayer.duration.coerceAtLeast(0L)
                 }
             } else {
-                duration = exoPlayer.duration.coerceAtLeast(0L)
-                bufferedPos = exoPlayer.bufferedPosition.coerceAtLeast(0L)
+                duration = activeExoPlayer.duration.coerceAtLeast(0L)
+                bufferedPos = activeExoPlayer.bufferedPosition.coerceAtLeast(0L)
             }
             delay(200)
         }
     }
 
     // Setup and stream media source
-    LaunchedEffect(selectedQuality, selectedSubtitle) {
+    LaunchedEffect(selectedQuality, selectedSubtitle, activeExoPlayer) {
         val quality = selectedQuality ?: return@LaunchedEffect
         val url = quality.url.trim()
         if (url.isBlank()) {
@@ -1545,6 +1564,20 @@ fun InlineCardPlayer(
             errorDetails = "The provided media link is empty."
             return@LaunchedEffect
         }
+
+        val currentUri = activeExoPlayer.currentMediaItem?.localConfiguration?.uri?.toString()
+        if (currentUri == url && activeExoPlayer.playbackState != Player.STATE_IDLE) {
+            // Stream is already loaded and playing seamlessly!
+            errorMessage = null
+            errorDetails = null
+            isBuffering = activeExoPlayer.playbackState == Player.STATE_BUFFERING
+            duration = activeExoPlayer.duration.coerceAtLeast(0L)
+            if (!activeExoPlayer.isPlaying && activeExoPlayer.playbackState == Player.STATE_READY) {
+                activeExoPlayer.play()
+            }
+            return@LaunchedEffect
+        }
+
         errorMessage = null
         errorDetails = null
         isBuffering = true
@@ -1606,12 +1639,12 @@ fun InlineCardPlayer(
 
             val mediaSource = mediaSourceFactory.createMediaSource(mediaItemBuilder.build())
             val resumePosition = currentPos
-            exoPlayer.setMediaSource(mediaSource)
-            exoPlayer.prepare()
+            activeExoPlayer.setMediaSource(mediaSource)
+            activeExoPlayer.prepare()
             if (resumePosition > 0) {
-                exoPlayer.seekTo(resumePosition)
+                activeExoPlayer.seekTo(resumePosition)
             }
-            exoPlayer.play()
+            activeExoPlayer.play()
         } catch (e: Exception) {
             errorMessage = "Playback Setup Failed"
             errorDetails = e.message ?: "Could not build media source."
@@ -1640,7 +1673,7 @@ fun InlineCardPlayer(
                     val initialVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
                     val winAttributes = activity?.window?.attributes
                     val initialBrightness = if ((winAttributes?.screenBrightness ?: -1f) < 0f) 0.5f else winAttributes!!.screenBrightness
-                    val initialPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
+                    val initialPosition = activeExoPlayer.currentPosition.coerceAtLeast(0L)
 
                     var gestureType = 0 // 0: None yet, 1: Seek (horizontal), 2: Volume (vert left), 3: Brightness (vert right)
                     var hasMoved = false
@@ -1667,6 +1700,9 @@ fun InlineCardPlayer(
                                         if (isLeftSide) 2 else 3 // 2: Volume, 3: Brightness
                                     } else {
                                         0
+                                    }
+                                    if (gestureType == 2 || gestureType == 3) {
+                                        showControls = false
                                     }
                                 }
                             }
@@ -1713,7 +1749,7 @@ fun InlineCardPlayer(
                         } else {
                             // Released!
                             if (gestureType == 1) {
-                                exoPlayer.seekTo(currentSeekTargetMs)
+                                activeExoPlayer.seekTo(currentSeekTargetMs)
                                 currentPos = currentSeekTargetMs
                                 lastSeekTime = System.currentTimeMillis()
                             } else if (gestureType == 2) {
@@ -1731,13 +1767,13 @@ fun InlineCardPlayer(
                                 val distFromLastTap = (change.position - lastTapPos).getDistance()
                                 if (now - lastTapTime < 320L && distFromLastTap < 100f) {
                                     if (startX < screenWidth * 0.5f) {
-                                        val target = (exoPlayer.currentPosition - 10000).coerceAtLeast(0L)
-                                        exoPlayer.seekTo(target)
+                                        val target = (activeExoPlayer.currentPosition - 10000).coerceAtLeast(0L)
+                                        activeExoPlayer.seekTo(target)
                                         currentPos = target
                                         lastSeekTime = System.currentTimeMillis()
                                     } else {
-                                        val target = (exoPlayer.currentPosition + 10000).coerceAtMost(duration)
-                                        exoPlayer.seekTo(target)
+                                        val target = (activeExoPlayer.currentPosition + 10000).coerceAtMost(duration)
+                                        activeExoPlayer.seekTo(target)
                                         currentPos = target
                                         lastSeekTime = System.currentTimeMillis()
                                     }
@@ -1759,7 +1795,7 @@ fun InlineCardPlayer(
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
-                    player = exoPlayer
+                    player = activeExoPlayer
                     useController = false
                     keepScreenOn = true
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
@@ -1770,8 +1806,13 @@ fun InlineCardPlayer(
                 }
             },
             update = { playerView ->
-                playerView.player = exoPlayer
+                if (playerView.player != activeExoPlayer) {
+                    playerView.player = activeExoPlayer
+                }
                 playerView.keepScreenOn = true
+            },
+            onReset = { playerView ->
+                playerView.player = null
             },
             modifier = Modifier.fillMaxSize()
         )
@@ -1833,8 +1874,8 @@ fun InlineCardPlayer(
                                 errorMessage = null
                                 errorDetails = null
                                 isBuffering = true
-                                exoPlayer.prepare()
-                                exoPlayer.play()
+                                activeExoPlayer.prepare()
+                                activeExoPlayer.play()
                             },
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = LocalAccentColor.current),
@@ -1897,23 +1938,23 @@ fun InlineCardPlayer(
                         )
                     )
             ) {
-                // Top-Right Native Sleek 'X' Dismiss Button (Compact shape tightly wrapped around X icon)
+                // Top-Right Back Button (Enlarged circle, matching Full Screen Back button size 38.dp)
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(top = 8.dp, end = 8.dp)
-                        .size(24.dp)
-                        .background(Color.Black.copy(alpha = 0.50f), CircleShape)
+                        .size(38.dp)
+                        .background(Color.White.copy(alpha = 0.20f), CircleShape)
                         .clip(CircleShape)
                         .clickable(onClick = onClose)
-                        .testTag("close_inline_player"),
+                        .testTag("back_inline_player"),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close Player",
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
                         tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
@@ -1924,7 +1965,7 @@ fun InlineCardPlayer(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { exoPlayer.seekTo((exoPlayer.currentPosition - 10000).coerceAtLeast(0L)) },
+                        onClick = { activeExoPlayer.seekTo((activeExoPlayer.currentPosition - 10000).coerceAtLeast(0L)) },
                         modifier = Modifier.size(42.dp)
                     ) {
                         Icon(
@@ -1937,10 +1978,10 @@ fun InlineCardPlayer(
 
                     IconButton(
                         onClick = {
-                            if (exoPlayer.isPlaying) {
-                                exoPlayer.pause()
+                            if (activeExoPlayer.isPlaying) {
+                                activeExoPlayer.pause()
                             } else {
-                                exoPlayer.play()
+                                activeExoPlayer.play()
                             }
                         },
                         modifier = Modifier
@@ -1956,7 +1997,7 @@ fun InlineCardPlayer(
                     }
 
                     IconButton(
-                        onClick = { exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(exoPlayer.duration)) },
+                        onClick = { activeExoPlayer.seekTo((activeExoPlayer.currentPosition + 10000).coerceAtMost(activeExoPlayer.duration)) },
                         modifier = Modifier.size(42.dp)
                     ) {
                         Icon(
@@ -2002,10 +2043,10 @@ fun InlineCardPlayer(
                             // Pop-Up Window / Picture in Picture Button
                             IconButton(
                                 onClick = {
-                                    onFullscreen(currentPos)
                                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && activity != null) {
                                         try {
-                                            val format = exoPlayer.videoFormat
+                                            showControls = false
+                                            val format = activeExoPlayer.videoFormat
                                             val rational = if (format != null && format.width > 0 && format.height > 0) {
                                                 val w = format.width
                                                 val h = format.height
@@ -2140,7 +2181,7 @@ fun InlineCardPlayer(
                                                 val finalTarget = (scrubProgress * duration).toLong()
                                                 currentPos = finalTarget
                                                 lastSeekTime = System.currentTimeMillis()
-                                                exoPlayer.seekTo(finalTarget)
+                                                activeExoPlayer.seekTo(finalTarget)
                                                 isScrubbing = false
                                                 break
                                             }

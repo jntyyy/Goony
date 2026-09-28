@@ -104,7 +104,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Navigation Stack / Current Screen
+    // Navigation Stack / Current Screen & Direction
+    enum class NavigationDirection {
+        FORWARD, BACK
+    }
+
+    private val _navDirection = MutableStateFlow(NavigationDirection.FORWARD)
+    val navDirection: StateFlow<NavigationDirection> = _navDirection.asStateFlow()
+
     private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Home)
     val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
@@ -115,12 +122,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var homeScrollOffset: Int = 0
 
     fun navigateTo(screen: ScreenState) {
-        screenStack.add(screen)
+        if (screen == _screenState.value) return
+        val existingIndex = screenStack.indexOf(screen)
+        if (existingIndex >= 0 && existingIndex < screenStack.size - 1) {
+            _navDirection.value = NavigationDirection.BACK
+            while (screenStack.size > existingIndex + 1) {
+                screenStack.removeAt(screenStack.size - 1)
+            }
+        } else {
+            _navDirection.value = NavigationDirection.FORWARD
+            screenStack.add(screen)
+        }
         _screenState.value = screen
     }
 
     fun navigateBack(): Boolean {
         if (screenStack.size > 1) {
+            _navDirection.value = NavigationDirection.BACK
             screenStack.removeAt(screenStack.size - 1)
             _screenState.value = screenStack.last()
             return true
@@ -135,6 +153,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Active Inline Video Card State (Embedded 16:9 Cover Player)
     private val _activeInlineVideo = MutableStateFlow<ActiveInlineVideoPlayback?>(null)
     val activeInlineVideo: StateFlow<ActiveInlineVideoPlayback?> = _activeInlineVideo.asStateFlow()
+
+    // Shared ExoPlayer Manager for seamless transition without stopping video
+    val sharedPlayerManager by lazy { SharedPlayerManager(application) }
+    private var lastInlineCardId: String? = null
 
     // Video Resolution Loading & Error States
     private val _resolvingCardId = MutableStateFlow<String?>(null)
@@ -252,18 +274,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun closeVideo() {
+        val currentVideo = _activeVideo.value
+        val inlineId = lastInlineCardId
         _activeVideo.value = null
+
+        if (inlineId != null && currentVideo != null) {
+            // Smoothly return to Inline Video Player mode without stopping playback
+            _activeInlineVideo.value = ActiveInlineVideoPlayback(
+                cardId = inlineId,
+                title = currentVideo.title,
+                qualities = currentVideo.qualities,
+                subtitles = currentVideo.subtitles,
+                headers = currentVideo.headers
+            )
+            lastInlineCardId = null
+        } else {
+            sharedPlayerManager.stopPlayer()
+        }
     }
 
     fun closeInlineVideo(cardId: String? = null) {
         if (cardId == null || _activeInlineVideo.value?.cardId == cardId) {
             _activeInlineVideo.value = null
+            lastInlineCardId = null
+            sharedPlayerManager.stopPlayer()
         }
     }
 
     fun openFullscreenFromInline(cardId: String, currentPositionMs: Long = 0L) {
         val inline = _activeInlineVideo.value ?: return
         if (inline.cardId == cardId) {
+            lastInlineCardId = cardId
             _activeInlineVideo.value = null
             _activeVideo.value = ActiveVideoPlayback(
                 title = inline.title,
@@ -274,6 +315,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 startInLandscape = true
             )
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        sharedPlayerManager.release()
     }
 
     // Active Photoset Lightbox State
@@ -379,6 +425,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun deleteActorWithCascade(actorId: String) {
+        viewModelScope.launch {
+            try {
+                val links = repository.allLinks.first()
+                links.forEach { link ->
+                    if (link.actorIds.contains(actorId)) {
+                        if (link.actorIds.size > 1) {
+                            // Link has other actors tagged: keep link, un-tag this actor
+                            val updatedActors = link.actorIds.filter { it != actorId }
+                            repository.updateLink(link.copy(actorIds = updatedActors))
+                        } else {
+                            // Sole actor: delete link completely
+                            repository.deleteLinkById(link.id)
+                        }
+                    }
+                }
+                repository.deleteActorById(actorId)
+            } catch (e: Exception) {
+                repository.deleteActorById(actorId)
+            }
+        }
+    }
+
     fun saveStudio(studio: StudioEntity) {
         viewModelScope.launch {
             repository.insertStudio(studio)
@@ -388,6 +457,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteStudio(id: String) {
         viewModelScope.launch {
             repository.deleteStudioById(id)
+        }
+    }
+
+    fun deleteStudioWithCascade(studioId: String) {
+        viewModelScope.launch {
+            try {
+                val links = repository.allLinks.first()
+                links.filter { it.studioIds.contains(studioId) }.forEach { link ->
+                    repository.deleteLinkById(link.id)
+                }
+                repository.deleteStudioById(studioId)
+            } catch (e: Exception) {
+                repository.deleteStudioById(studioId)
+            }
         }
     }
 
@@ -528,5 +611,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val byteOut = ByteArrayOutputStream()
         GZIPOutputStream(byteOut).use { it.write(str.toByteArray(Charsets.UTF_8)) }
         return byteOut.toByteArray()
+    }
+}
+
+class SharedPlayerManager(private val context: android.content.Context) {
+    private var _exoPlayer: androidx.media3.exoplayer.ExoPlayer? = null
+
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    fun getPlayer(): androidx.media3.exoplayer.ExoPlayer {
+        val existing = _exoPlayer
+        if (existing != null) return existing
+
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 10_000,
+                /* maxBufferMs = */ 45_000,
+                /* bufferForPlaybackMs = */ 500,
+                /* bufferForPlaybackAfterRebufferMs = */ 1_000
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+
+        val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(context)
+            .setEnableDecoderFallback(true)
+
+        val newPlayer = androidx.media3.exoplayer.ExoPlayer.Builder(context, renderersFactory)
+            .setLoadControl(loadControl)
+            .setSeekBackIncrementMs(10_000)
+            .setSeekForwardIncrementMs(10_000)
+            .build().apply {
+                playWhenReady = true
+            }
+
+        _exoPlayer = newPlayer
+        return newPlayer
+    }
+
+    fun stopPlayer() {
+        _exoPlayer?.stop()
+        _exoPlayer?.clearMediaItems()
+    }
+
+    fun release() {
+        _exoPlayer?.release()
+        _exoPlayer = null
     }
 }

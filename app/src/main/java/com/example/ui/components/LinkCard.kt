@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -57,70 +58,9 @@ import kotlinx.coroutines.delay
 
 private enum class CardActionMenuState {
     CLOSED,
-    MAIN_MENU,   // Action Buttons: Delete (Red), Edit (Soft Sand), Bookmark (Pink Bookmark), URL (Blue), Magnet (Emerald Green)
-    URL_SUBMENU, // Back, HD (Blue), 4K (Gold)
-    MAGNET_SUBMENU // Back, HD (Blue), 4K (Gold)
-}
-
-/**
- * Authentic Horseshoe Magnet Icon Vector matching the reference design:
- * Clean rounded U-magnet with silver pole tips.
- */
-@Composable
-fun HorseshoeMagnetIcon(
-    tint: Color,
-    modifier: Modifier = Modifier
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val strokeWidth = w * 0.22f
-
-        // Draw U-shape Horseshoe
-        val uPath = Path().apply {
-            moveTo(w * 0.23f, h * 0.22f)
-            lineTo(w * 0.23f, h * 0.58f)
-            arcTo(
-                rect = Rect(
-                    left = w * 0.23f,
-                    top = h * 0.26f,
-                    right = w * 0.77f,
-                    bottom = h * 0.88f
-                ),
-                startAngleDegrees = 180f,
-                sweepAngleDegrees = -180f,
-                forceMoveTo = false
-            )
-            lineTo(w * 0.77f, h * 0.22f)
-        }
-
-        drawPath(
-            path = uPath,
-            color = tint,
-            style = Stroke(
-                width = strokeWidth,
-                cap = StrokeCap.Round
-            )
-        )
-
-        // Draw Left & Right Metal Pole Caps (White/Silver accent tips)
-        val capHeight = h * 0.13f
-        val capWidth = strokeWidth * 0.95f
-
-        // Left Cap
-        drawRect(
-            color = Color.White.copy(alpha = 0.90f),
-            topLeft = Offset(w * 0.23f - capWidth / 2f, h * 0.15f),
-            size = Size(capWidth, capHeight)
-        )
-
-        // Right Cap
-        drawRect(
-            color = Color.White.copy(alpha = 0.90f),
-            topLeft = Offset(w * 0.77f - capWidth / 2f, h * 0.15f),
-            size = Size(capWidth, capHeight)
-        )
-    }
+    MAIN_MENU,
+    QUALITY_MENU,
+    DELETE_CONFIRM
 }
 
 @Composable
@@ -144,17 +84,16 @@ fun LinkCard(
     inlinePlayback: ActiveInlineVideoPlayback? = null,
     onCloseInlineVideo: () -> Unit = {},
     onFullscreenInlineVideo: (positionMs: Long) -> Unit = {},
+    exoPlayer: androidx.media3.exoplayer.ExoPlayer? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
 
-    // Delete Confirmation Dialog State
-    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-
     // Internal Submenu state while active
     var subMenuState by remember { mutableStateOf<CardActionMenuState?>(null) }
+    var selectedSource by remember { mutableStateOf<Source?>(null) }
     
     val currentMenuState = when {
         !isActiveCard -> CardActionMenuState.CLOSED
@@ -167,30 +106,22 @@ fun LinkCard(
     LaunchedEffect(isActiveCard) {
         if (!isActiveCard) {
             subMenuState = null
+            selectedSource = null
         }
     }
 
-    // Handle System Back button when overlay is open
+    // Handle System Back button when overlay is open (returns to MAIN_MENU from submenus, or closes)
     BackHandler(enabled = isOverlayActive) {
-        if (currentMenuState == CardActionMenuState.URL_SUBMENU || currentMenuState == CardActionMenuState.MAGNET_SUBMENU) {
+        if (currentMenuState != CardActionMenuState.MAIN_MENU && currentMenuState != CardActionMenuState.CLOSED) {
             subMenuState = CardActionMenuState.MAIN_MENU
         } else {
             onDismissActive()
         }
     }
 
-    // Smooth GPU Zoom & Blur on the cover image (only animated when active)
-    val imageScale by animateFloatAsState(
-        targetValue = if (isOverlayActive) 1.05f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "cover_scale"
-    )
     val imageBlur by animateDpAsState(
         targetValue = if (isOverlayActive) 8.dp else 0.dp,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "cover_blur"
     )
 
@@ -314,6 +245,7 @@ fun LinkCard(
                     qualities = inlinePlayback.qualities,
                     subtitles = inlinePlayback.subtitles,
                     defaultHeaders = inlinePlayback.headers,
+                    exoPlayer = exoPlayer,
                     onClose = onCloseInlineVideo,
                     onFullscreen = onFullscreenInlineVideo,
                     modifier = Modifier.fillMaxSize()
@@ -325,12 +257,7 @@ fun LinkCard(
                         .fillMaxSize()
                         .then(
                             if (isOverlayActive) {
-                                Modifier
-                                    .graphicsLayer {
-                                        scaleX = imageScale
-                                        scaleY = imageScale
-                                    }
-                                    .blur(imageBlur)
+                                Modifier.blur(imageBlur)
                             } else {
                                 Modifier
                             }
@@ -383,36 +310,62 @@ fun LinkCard(
                 }
             }
 
-            // Smooth Scrim Layer
-            if (isOverlayActive) {
+            // Smooth Scrim Layer with simple fade in/out
+            val scrimAlpha by animateFloatAsState(
+                targetValue = if (isOverlayActive) 1f else 0f,
+                animationSpec = tween(durationMillis = 150),
+                label = "scrim_alpha"
+            )
+
+            if (scrimAlpha > 0f) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .graphicsLayer { alpha = scrimAlpha }
                         .background(Color.Black.copy(alpha = 0.55f))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            onDismissActive()
+                            if (currentMenuState != CardActionMenuState.MAIN_MENU) {
+                                subMenuState = CardActionMenuState.MAIN_MENU
+                            } else {
+                                onDismissActive()
+                            }
                         }
                 )
             }
 
-            // AnimatedContent transition for menu states with clip = false to prevent clipping during scale overshoot
+            // Smooth Native Zoom & Enhanced Bouncy Pop-up transition (Centered + Instant Size Snap)
             AnimatedContent(
                 targetState = currentMenuState,
                 transitionSpec = {
-                    (fadeIn(animationSpec = tween(120, easing = LinearOutSlowInEasing)) +
-                            scaleIn(initialScale = 0.85f, animationSpec = tween(120)))
+                    (fadeIn(animationSpec = tween(170, easing = LinearOutSlowInEasing)) +
+                            scaleIn(
+                                initialScale = 0.65f,
+                                animationSpec = spring(
+                                    dampingRatio = 0.48f,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            ))
                         .togetherWith(
-                            fadeOut(animationSpec = tween(80, easing = FastOutLinearInEasing)) +
-                                    scaleOut(targetScale = 0.90f, animationSpec = tween(80))
+                            fadeOut(animationSpec = tween(120, easing = FastOutLinearInEasing)) +
+                                    scaleOut(
+                                        targetScale = 0.85f,
+                                        animationSpec = tween(120)
+                                    )
                         )
-                        .using(SizeTransform(clip = false))
+                        .using(
+                            SizeTransform(clip = false) { _, _ ->
+                                tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                            }
+                        )
                 },
+                contentAlignment = Alignment.Center,
                 modifier = Modifier
+                    .fillMaxWidth()
                     .align(Alignment.Center)
-                    .padding(vertical = 4.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 label = "center_spread_content"
             ) { state ->
                 when (state) {
@@ -421,282 +374,80 @@ fun LinkCard(
                     }
 
                     CardActionMenuState.MAIN_MENU -> {
-                        if (isPhotoset) {
-                            val totalButtons = 4
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                            ) {
-                                // 0. Delete (Coral Red)
-                                StaggeredCircularButton(
-                                    delayIndex = 0,
-                                    totalCount = totalButtons,
-                                    icon = Icons.Outlined.Delete,
-                                    label = "Delete",
-                                    containerColor = Color(0xFFE54B4B),
-                                    contentColor = Color.White,
-                                    onClick = { showDeleteConfirmDialog = true }
-                                )
-
-                                // 1. Edit (Muted Warm Sand Grey)
-                                StaggeredCircularButton(
-                                    delayIndex = 1,
-                                    totalCount = totalButtons,
-                                    icon = Icons.Outlined.Edit,
-                                    label = "Edit",
-                                    containerColor = Color(0xFFC7C5B8),
-                                    contentColor = Color(0xFF2C2C28),
-                                    onClick = {
-                                        onDismissActive()
-                                        onEdit()
-                                    }
-                                )
-
-                                // 2. Bookmark (Bookmark Ribbon: Unsaved = Outlined ring, Saved = Filled Rose Pink)
-                                val bookmarkContainer = if (isBookmarked) Color(0xFFD64A71) else Color.Transparent
-                                val bookmarkContent = if (isBookmarked) Color.White else Color(0xFFD64A71)
-                                val bookmarkBorder = if (isBookmarked) null else BorderStroke(2.dp, Color(0xFFD64A71))
-
-                                StaggeredCircularButton(
-                                    delayIndex = 2,
-                                    totalCount = totalButtons,
-                                    icon = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                                    label = if (isBookmarked) "Saved" else "Save",
-                                    containerColor = bookmarkContainer,
-                                    contentColor = bookmarkContent,
-                                    border = bookmarkBorder,
-                                    onClick = { onToggleBookmark() }
-                                )
-
-                                // 3. Photos Gallery
-                                StaggeredCircularButton(
-                                    delayIndex = 3,
-                                    totalCount = totalButtons,
-                                    icon = Icons.Outlined.PhotoLibrary,
-                                    label = "Photos",
-                                    containerColor = accent,
-                                    contentColor = Color.White,
-                                    onClick = {
-                                        onDismissActive()
-                                        onOpenGallery()
-                                    }
-                                )
+                        MainActionMenu(
+                            onMagnetClick = {
+                                selectedSource = Source.MAGNET
+                                subMenuState = CardActionMenuState.QUALITY_MENU
+                            },
+                            onUrlClick = {
+                                selectedSource = Source.URL
+                                subMenuState = CardActionMenuState.QUALITY_MENU
+                            },
+                            onSave = {
+                                onToggleBookmark()
+                            },
+                            isSaved = isBookmarked,
+                            onEdit = {
+                                onDismissActive()
+                                onEdit()
+                            },
+                            onDelete = {
+                                subMenuState = CardActionMenuState.DELETE_CONFIRM
                             }
+                        )
+                    }
+
+                    CardActionMenuState.QUALITY_MENU -> {
+                        val hasHD = if (selectedSource == Source.MAGNET) {
+                            !link.magnet.isNullOrBlank() || !link.torrentUrlHD.isNullOrBlank()
                         } else {
-                            // Reversed Order (5 buttons):
-                            // 1. Magnet (Vibrant Emerald Green: #1EA87A, horseshoe magnet icon) -> "Magnet"
-                            // 2. URL (Vibrant Sky Blue: #2F80ED, linked rings icon) -> "URL"
-                            // 3. Bookmark (Rose Pink: #D64A71, Ribbon icon. Unsaved: outlined with ring, Saved: filled) -> "Save" / "Saved"
-                            // 4. Edit (Warm Sand Grey: #C7C5B8, dark icon) -> "Edit"
-                            // 5. Delete (Coral Red: #E54B4B) -> "Delete"
-                            val totalButtons = 3 + (if (hasAnyUrl) 1 else 0) + (if (hasAnyMagnet) 1 else 0)
-                            var runningIndex = 0
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                            ) {
-                                // 1. Magnet (Vibrant Emerald Green: 0xFF1EA87A) - Only shown if at least one Magnet exists
-                                if (hasAnyMagnet) {
-                                    StaggeredCircularButton(
-                                        delayIndex = runningIndex++,
-                                        totalCount = totalButtons,
-                                        customIcon = { tint ->
-                                            HorseshoeMagnetIcon(
-                                                tint = tint,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        },
-                                        label = "Magnet",
-                                        containerColor = Color(0xFF1EA87A),
-                                        contentColor = Color.White,
-                                        onClick = {
-                                            subMenuState = CardActionMenuState.MAGNET_SUBMENU
-                                        }
-                                    )
-                                }
-
-                                // 2. URL (Vibrant Sky Blue: 0xFF2F80ED) - Only shown if at least one URL exists
-                                if (hasAnyUrl) {
-                                    StaggeredCircularButton(
-                                        delayIndex = runningIndex++,
-                                        totalCount = totalButtons,
-                                        icon = Icons.Outlined.Link,
-                                        iconRotation = 45f,
-                                        label = "URL",
-                                        containerColor = Color(0xFF2F80ED),
-                                        contentColor = Color.White,
-                                        onClick = {
-                                            subMenuState = CardActionMenuState.URL_SUBMENU
-                                        }
-                                    )
-                                }
-
-                                // 3. Bookmark (Rose Pink Ribbon: 0xFFD64A71)
-                                // Unsaved: Dark circle with rose pink outline ring and icon
-                                // Saved: Solid filled rose pink circle with white icon
-                                val bookmarkContainer = if (isBookmarked) Color(0xFFD64A71) else Color.Transparent
-                                val bookmarkContent = if (isBookmarked) Color.White else Color(0xFFD64A71)
-                                val bookmarkBorder = if (isBookmarked) null else BorderStroke(2.dp, Color(0xFFD64A71))
-
-                                StaggeredCircularButton(
-                                    delayIndex = runningIndex++,
-                                    totalCount = totalButtons,
-                                    icon = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                                    label = if (isBookmarked) "Saved" else "Save",
-                                    containerColor = bookmarkContainer,
-                                    contentColor = bookmarkContent,
-                                    border = bookmarkBorder,
-                                    onClick = {
-                                        onToggleBookmark()
-                                    }
-                                )
-
-                                // 4. Edit (Warm Sand Grey: 0xFFC7C5B8, Dark Slate Icon)
-                                StaggeredCircularButton(
-                                    delayIndex = runningIndex++,
-                                    totalCount = totalButtons,
-                                    icon = Icons.Outlined.Edit,
-                                    label = "Edit",
-                                    containerColor = Color(0xFFC7C5B8),
-                                    contentColor = Color(0xFF2C2C28),
-                                    onClick = {
-                                        onDismissActive()
-                                        onEdit()
-                                    }
-                                )
-
-                                // 5. Delete (Coral Red: 0xFFE54B4B)
-                                StaggeredCircularButton(
-                                    delayIndex = runningIndex++,
-                                    totalCount = totalButtons,
-                                    icon = Icons.Outlined.Delete,
-                                    label = "Delete",
-                                    containerColor = Color(0xFFE54B4B),
-                                    contentColor = Color.White,
-                                    onClick = {
-                                        showDeleteConfirmDialog = true
-                                    }
-                                )
-                            }
+                            !link.urlHD.isNullOrBlank()
                         }
+                        val has4K = if (selectedSource == Source.MAGNET) {
+                            !link.magnet4K.isNullOrBlank() || !link.torrentUrl4K.isNullOrBlank()
+                        } else {
+                            !link.url4K.isNullOrBlank()
+                        }
+
+                        QualitySelectMenu(
+                            hasHD = hasHD,
+                            has4K = has4K,
+                            onSelectHD = {
+                                onDismissActive()
+                                if (selectedSource == Source.MAGNET) {
+                                    handleMagnet(link.magnet)
+                                } else {
+                                    handleUrlSelection(link.urlHD)
+                                }
+                            },
+                            onSelect4K = {
+                                onDismissActive()
+                                if (selectedSource == Source.MAGNET) {
+                                    handleMagnet(link.magnet4K)
+                                } else {
+                                    handleUrlSelection(link.url4K)
+                                }
+                            }
+                        )
                     }
 
-                    CardActionMenuState.URL_SUBMENU -> {
-                        val totalSubButtons = 1 + (if (hasUrlHD) 1 else 0) + (if (hasUrl4K) 1 else 0)
-                        var subIndex = 0
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 6.dp)
-                        ) {
-                            // Back Button
-                            StaggeredCircularButton(
-                                delayIndex = subIndex++,
-                                totalCount = totalSubButtons,
-                                icon = Icons.AutoMirrored.Outlined.ArrowBack,
-                                label = "Back",
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                onClick = { subMenuState = CardActionMenuState.MAIN_MENU }
-                            )
-
-                            // HD URL (0xFF2F80ED Blue)
-                            if (hasUrlHD) {
-                                StaggeredQualityButton(
-                                    delayIndex = subIndex++,
-                                    totalCount = totalSubButtons,
-                                    title = "HD",
-                                    label = "HD",
-                                    containerColor = Color(0xFF2F80ED),
-                                    contentColor = Color.White,
-                                    onClick = {
-                                        onDismissActive()
-                                        handleUrlSelection(link.urlHD)
-                                    }
-                                )
+                    CardActionMenuState.DELETE_CONFIRM -> {
+                        DeleteConfirmMenu(
+                            onCancel = {
+                                subMenuState = CardActionMenuState.MAIN_MENU
+                            },
+                            onConfirm = {
+                                onDismissActive()
+                                onDelete()
                             }
-
-                            // 4K URL (0xFFEAB308 Gold/Yellow)
-                            if (hasUrl4K) {
-                                StaggeredQualityButton(
-                                    delayIndex = subIndex++,
-                                    totalCount = totalSubButtons,
-                                    title = "4K",
-                                    label = "4K",
-                                    containerColor = Color(0xFFEAB308),
-                                    contentColor = Color.Black,
-                                    onClick = {
-                                        onDismissActive()
-                                        handleUrlSelection(link.url4K)
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    CardActionMenuState.MAGNET_SUBMENU -> {
-                        val totalSubButtons = 1 + (if (hasMagnetHD) 1 else 0) + (if (hasMagnet4K) 1 else 0)
-                        var subIndex = 0
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 6.dp)
-                        ) {
-                            // Back Button
-                            StaggeredCircularButton(
-                                delayIndex = subIndex++,
-                                totalCount = totalSubButtons,
-                                icon = Icons.AutoMirrored.Outlined.ArrowBack,
-                                label = "Back",
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                onClick = { subMenuState = CardActionMenuState.MAIN_MENU }
-                            )
-
-                            // HD Magnet (0xFF2F80ED Blue)
-                            if (hasMagnetHD) {
-                                StaggeredQualityButton(
-                                    delayIndex = subIndex++,
-                                    totalCount = totalSubButtons,
-                                    title = "HD",
-                                    label = "HD",
-                                    containerColor = Color(0xFF2F80ED),
-                                    contentColor = Color.White,
-                                    onClick = {
-                                        onDismissActive()
-                                        handleMagnet(link.magnet)
-                                    }
-                                )
-                            }
-
-                            // 4K Magnet (0xFFEAB308 Gold/Yellow)
-                            if (hasMagnet4K) {
-                                StaggeredQualityButton(
-                                    delayIndex = subIndex++,
-                                    totalCount = totalSubButtons,
-                                    title = "4K",
-                                    label = "4K",
-                                    containerColor = Color(0xFFEAB308),
-                                    contentColor = Color.Black,
-                                    onClick = {
-                                        onDismissActive()
-                                        handleMagnet(link.magnet4K)
-                                    }
-                                )
-                            }
-                        }
+                        )
                     }
                 }
             }
 
             // ========================================================
             // Inline Resolution & Progress Overlay (replaces popup dialog)
-            // Cover turns into theme palette color (Dark / Amoled / Light) with real-time status steps
+            // Cover turns into theme background (Dark / Amoled / Light) with real-time status steps
             // ========================================================
             if (isResolvingThisCard && resolvingStatus != null) {
                 Box(
@@ -706,7 +457,7 @@ fun LinkCard(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     palette.surface,
-                                    palette.cardBg
+                                    palette.bg
                                 )
                             )
                         )
@@ -720,7 +471,7 @@ fun LinkCard(
                     ) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(42.dp),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = accent,
                             strokeWidth = 3.5.dp
                         )
                         Text(
@@ -874,241 +625,6 @@ fun LinkCard(
                 }
             }
         }
-    }
-
-    // ========================================================
-    // 3. Delete Confirmation Dialog with Rounded Corners
-    // ========================================================
-    if (showDeleteConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = false },
-            shape = RoundedCornerShape(24.dp),
-            icon = {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Color(0xFFFEE2E2), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = null,
-                        tint = Color(0xFFEF4444),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            },
-            title = {
-                Text(
-                    text = "Delete Scene?",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-            },
-            text = {
-                Text(
-                    text = "Are you sure you want to delete \"${link.title}\"? This action cannot be undone.",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteConfirmDialog = false
-                        onDismissActive()
-                        onDelete()
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFEF4444),
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("Delete", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { showDeleteConfirmDialog = false },
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-}
-
-/**
- * StaggeredCircularButton:
- * Center-outward animation delay based on distanceFromCenter.
- * Scale spring animation: dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium.
- * Alpha tween animation: duration = 220ms, easing = LinearOutSlowInEasing.
- */
-@Composable
-private fun StaggeredCircularButton(
-    delayIndex: Int,
-    totalCount: Int,
-    icon: ImageVector? = null,
-    customIcon: (@Composable (Color) -> Unit)? = null,
-    iconRotation: Float = 0f,
-    label: String,
-    containerColor: Color,
-    contentColor: Color,
-    border: BorderStroke? = null,
-    onClick: () -> Unit
-) {
-    val centerIndex = (totalCount - 1) / 2f
-    val distanceFromCenter = abs(delayIndex - centerIndex)
-
-    var isVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        delay((distanceFromCenter * 45).toLong())
-        isVisible = true
-    }
-
-    val scale by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0.4f,
-        animationSpec = spring(
-            dampingRatio = 0.7f,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "btn_scale"
-    )
-
-    val alpha by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(220, easing = LinearOutSlowInEasing),
-        label = "btn_alpha"
-    )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.width(48.dp)
-    ) {
-        Surface(
-            onClick = onClick,
-            shape = CircleShape,
-            color = containerColor,
-            border = border,
-            shadowElevation = if (border != null) 0.dp else 4.dp,
-            modifier = Modifier
-                .size(46.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    this.alpha = alpha
-                }
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (customIcon != null) {
-                    customIcon(contentColor)
-                } else if (icon != null) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = label,
-                        tint = contentColor,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .rotate(iconRotation)
-                    )
-                }
-            }
-        }
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.graphicsLayer {
-                this.alpha = alpha
-            }
-        )
-    }
-}
-
-/**
- * StaggeredQualityButton:
- * Center-outward animation delay based on distanceFromCenter.
- * Scale spring animation: dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium.
- * Alpha tween animation: duration = 220ms, easing = LinearOutSlowInEasing.
- */
-@Composable
-private fun StaggeredQualityButton(
-    delayIndex: Int,
-    totalCount: Int,
-    title: String,
-    label: String,
-    containerColor: Color,
-    contentColor: Color,
-    onClick: () -> Unit
-) {
-    val centerIndex = (totalCount - 1) / 2f
-    val distanceFromCenter = abs(delayIndex - centerIndex)
-
-    var isVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        delay((distanceFromCenter * 45).toLong())
-        isVisible = true
-    }
-
-    val scale by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0.4f,
-        animationSpec = spring(
-            dampingRatio = 0.7f,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "btn_scale"
-    )
-
-    val alpha by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(220, easing = LinearOutSlowInEasing),
-        label = "btn_alpha"
-    )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.width(52.dp)
-    ) {
-        Surface(
-            onClick = onClick,
-            shape = CircleShape,
-            color = containerColor,
-            shadowElevation = 4.dp,
-            modifier = Modifier
-                .size(48.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    this.alpha = alpha
-                }
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 16.sp,
-                    color = contentColor
-                )
-            }
-        }
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.graphicsLayer {
-                this.alpha = alpha
-            }
-        )
     }
 }
 

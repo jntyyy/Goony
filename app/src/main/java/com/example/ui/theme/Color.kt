@@ -2,17 +2,29 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-sealed class VaultThemePalette(
-    val name: String,
-    val bg: Color,
-    val surface: Color,
-    val cardBg: Color,
-    val textPrimary: Color,
-    val textSecondary: Color,
-    val textMuted: Color,
-    val border: Color,
-    val skeletonBg: Color
+open class VaultThemePalette(
+    open val name: String,
+    open val bg: Color,
+    open val surface: Color,
+    open val cardBg: Color,
+    open val textPrimary: Color,
+    open val textSecondary: Color,
+    open val textMuted: Color,
+    open val border: Color,
+    open val skeletonBg: Color
 ) {
+    class Dynamic(
+        override val name: String,
+        override val bg: Color,
+        override val surface: Color,
+        override val cardBg: Color,
+        override val textPrimary: Color,
+        override val textSecondary: Color,
+        override val textMuted: Color,
+        override val border: Color,
+        override val skeletonBg: Color
+    ) : VaultThemePalette(name, bg, surface, cardBg, textPrimary, textSecondary, textMuted, border, skeletonBg)
+
     object Dark : VaultThemePalette(
         name = "Dark",
         bg = Color(0xFF28282D),
