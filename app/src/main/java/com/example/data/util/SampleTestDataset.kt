@@ -26,21 +26,21 @@ object SampleTestDataset {
 
     // Actors present in this updated dataset
     val sampleActors: List<ActorEntity> = listOf(
-        ActorEntity(id = "actor_payton_preslee", name = "Payton Preslee", imageUrl = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_adriana_maya", name = "Adriana Maya", imageUrl = "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_jewelz_blu", name = "Jewelz Blu", imageUrl = "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_luna_luxe", name = "Luna Luxe", imageUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_jazmin_black", name = "Jazmin Black", imageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_ella_reese", name = "Ella Reese", imageUrl = "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_haru_minami", name = "Haru Minami", imageUrl = "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_mandi_love", name = "Mandi Love", imageUrl = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_cory_chase", name = "Cory Chase", imageUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_jill_taylor", name = "Jill Taylor", imageUrl = "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_nia_bleu", name = "Nia Bleu", imageUrl = "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_elana_bunnz", name = "Elana Bunnz", imageUrl = "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_luxe_lafox", name = "Luxe LaFox", imageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_raissa_bellini", name = "Raissa Bellini", imageUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80"),
-        ActorEntity(id = "actor_remy_woods", name = "Remy Woods", imageUrl = "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop&q=80")
+        ActorEntity(id = "actor_payton_preslee", name = "Payton Preslee", imageUrl = ""),
+        ActorEntity(id = "actor_adriana_maya", name = "Adriana Maya", imageUrl = ""),
+        ActorEntity(id = "actor_jewelz_blu", name = "Jewelz Blu", imageUrl = ""),
+        ActorEntity(id = "actor_luna_luxe", name = "Luna Luxe", imageUrl = ""),
+        ActorEntity(id = "actor_jazmin_black", name = "Jazmin Black", imageUrl = ""),
+        ActorEntity(id = "actor_ella_reese", name = "Ella Reese", imageUrl = ""),
+        ActorEntity(id = "actor_haru_minami", name = "Haru Minami", imageUrl = ""),
+        ActorEntity(id = "actor_mandi_love", name = "Mandi Love", imageUrl = ""),
+        ActorEntity(id = "actor_cory_chase", name = "Cory Chase", imageUrl = ""),
+        ActorEntity(id = "actor_jill_taylor", name = "Jill Taylor", imageUrl = ""),
+        ActorEntity(id = "actor_nia_bleu", name = "Nia Bleu", imageUrl = ""),
+        ActorEntity(id = "actor_elana_bunnz", name = "Elana Bunnz", imageUrl = ""),
+        ActorEntity(id = "actor_luxe_lafox", name = "Luxe LaFox", imageUrl = ""),
+        ActorEntity(id = "actor_raissa_bellini", name = "Raissa Bellini", imageUrl = ""),
+        ActorEntity(id = "actor_remy_woods", name = "Remy Woods", imageUrl = "")
     )
 
     // Studios present in this updated dataset

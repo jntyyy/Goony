@@ -57,6 +57,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private enum class CardActionMenuState {
     CLOSED,
@@ -98,17 +99,20 @@ fun LinkCard(
     var subMenuState by remember { mutableStateOf<CardActionMenuState?>(null) }
     var selectedSource by remember { mutableStateOf<Source?>(null) }
     var lastToggleTime by remember { mutableLongStateOf(0L) }
-    var bounceTrigger by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
     val bounceScale = remember { androidx.compose.animation.core.Animatable(1f) }
 
-    LaunchedEffect(bounceTrigger) {
-        if (bounceTrigger > 0) {
-            bounceScale.snapTo(0.92f)
+    var bounceJob: kotlinx.coroutines.Job? by remember { mutableStateOf(null) }
+
+    fun triggerBounce() {
+        bounceJob?.cancel()
+        bounceJob = scope.launch {
+            bounceScale.snapTo(0.91f)
             bounceScale.animateTo(
                 targetValue = 1f,
                 animationSpec = spring(
-                    dampingRatio = 0.65f,
-                    stiffness = Spring.StiffnessLow
+                    dampingRatio = 0.45f,
+                    stiffness = Spring.StiffnessMedium
                 )
             )
         }
@@ -125,6 +129,7 @@ fun LinkCard(
     LaunchedEffect(isActiveCard) {
         if (isActiveCard) {
             lastToggleTime = System.currentTimeMillis()
+            triggerBounce()
         } else {
             subMenuState = null
             selectedSource = null
@@ -132,38 +137,25 @@ fun LinkCard(
     }
 
     fun handleCoverTap() {
-        val now = System.currentTimeMillis()
-        if (now - lastToggleTime < 120L) return
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
 
         if (isOverlayActive) {
-            if (now - lastToggleTime < 280L) {
-                // Rapid tap while open -> re-trigger spring bounce feedback!
-                lastToggleTime = now
-                bounceTrigger++
-            } else {
-                lastToggleTime = now
-                onDismissActive()
-            }
+            // Dismiss instantly on second click, even if clicked extremely fast!
+            onDismissActive()
         } else {
-            lastToggleTime = now
+            // Open and trigger bouncy pop animation instantly on first click!
+            triggerBounce()
             onActivate()
         }
     }
 
     fun handleScrimTap() {
-        val now = System.currentTimeMillis()
-        if (now - lastToggleTime < 120L) return
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-
+        
         if (currentMenuState != CardActionMenuState.MAIN_MENU) {
-            lastToggleTime = now
             subMenuState = CardActionMenuState.MAIN_MENU
-        } else if (now - lastToggleTime < 280L) {
-            lastToggleTime = now
-            bounceTrigger++
         } else {
-            lastToggleTime = now
+            // Close instantly when clicking on the scrim background
             onDismissActive()
         }
     }
@@ -260,12 +252,11 @@ fun LinkCard(
         label = "cover_reveal_alpha"
     )
     val coverScale by animateFloatAsState(
-        targetValue = when {
-            isOverlayActive -> 1.08f
-            !isImageLoaded -> 1.04f
-            else -> 1.0f
-        },
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        targetValue = if (isOverlayActive) 1.15f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = 0.45f,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "cover_scale"
     )
 
@@ -396,15 +387,18 @@ fun LinkCard(
                             scaleIn(
                                 initialScale = 0.65f,
                                 animationSpec = spring(
-                                    dampingRatio = 0.48f,
-                                    stiffness = Spring.StiffnessMediumLow
+                                    dampingRatio = 0.45f,
+                                    stiffness = Spring.StiffnessMedium
                                 )
                             ))
                         .togetherWith(
                             fadeOut(animationSpec = tween(120, easing = FastOutLinearInEasing)) +
                                     scaleOut(
                                         targetScale = 0.85f,
-                                        animationSpec = tween(120)
+                                        animationSpec = spring(
+                                            dampingRatio = 0.45f,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
                                     )
                         )
                         .using(

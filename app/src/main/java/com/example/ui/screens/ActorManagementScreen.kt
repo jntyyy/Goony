@@ -209,7 +209,7 @@ fun ActorManagementScreen(
                                         .border(2.dp, if (showCards) Color.White else accent.copy(alpha = 0.5f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.Person, contentDescription = null, tint = palette.textMuted, modifier = Modifier.size(36.dp))
+                                    Icon(Icons.Default.AccountCircle, contentDescription = null, tint = palette.textMuted, modifier = Modifier.size(42.dp))
                                 }
                             }
 
