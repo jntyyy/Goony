@@ -111,8 +111,8 @@ fun LinkCard(
             bounceScale.animateTo(
                 targetValue = 1f,
                 animationSpec = spring(
-                    dampingRatio = 0.45f,
-                    stiffness = Spring.StiffnessMedium
+                    dampingRatio = 0.65f,
+                    stiffness = Spring.StiffnessMediumLow
                 )
             )
         }
@@ -254,7 +254,7 @@ fun LinkCard(
     val coverScale by animateFloatAsState(
         targetValue = if (isOverlayActive) 1.15f else 1.0f,
         animationSpec = tween(
-            durationMillis = 280,
+            durationMillis = 420,
             easing = FastOutSlowInEasing
         ),
         label = "cover_scale"
@@ -383,21 +383,21 @@ fun LinkCard(
             AnimatedContent(
                 targetState = currentMenuState,
                 transitionSpec = {
-                    (fadeIn(animationSpec = tween(170, easing = LinearOutSlowInEasing)) +
+                    (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
                             scaleIn(
                                 initialScale = 0.65f,
                                 animationSpec = spring(
-                                    dampingRatio = 0.45f,
-                                    stiffness = Spring.StiffnessMedium
+                                    dampingRatio = 0.65f,
+                                    stiffness = Spring.StiffnessMediumLow
                                 )
                             ))
                         .togetherWith(
-                            fadeOut(animationSpec = tween(120, easing = FastOutLinearInEasing)) +
+                            fadeOut(animationSpec = tween(150, easing = FastOutLinearInEasing)) +
                                     scaleOut(
                                         targetScale = 0.85f,
                                         animationSpec = spring(
-                                            dampingRatio = 0.45f,
-                                            stiffness = Spring.StiffnessMedium
+                                            dampingRatio = 0.65f,
+                                            stiffness = Spring.StiffnessMediumLow
                                         )
                                     )
                         )

@@ -121,6 +121,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Home Feed Scroll Position Memory
     var homeScrollIndex: Int = 0
     var homeScrollOffset: Int = 0
+    var initialSettingsSection: String? = null
 
     fun navigateTo(screen: ScreenState) {
         if (screen == _screenState.value) return

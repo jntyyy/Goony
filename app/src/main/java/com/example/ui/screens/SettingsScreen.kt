@@ -65,7 +65,18 @@ fun SettingsScreen(
     var rdKey by remember(currentSettings) { mutableStateOf(currentSettings.realDebridApiKey) }
 
     var sampleDataStatus by remember { mutableStateOf("") }
-    var currentSection by remember { mutableStateOf(SettingsSection.MAIN_MENU) }
+    val initialSection = remember {
+        val sec = when (viewModel.initialSettingsSection) {
+            "DISPLAY" -> SettingsSection.DISPLAY
+            "INTEGRATIONS" -> SettingsSection.INTEGRATIONS
+            "DATA_BACKUP" -> SettingsSection.DATA_BACKUP
+            "SAMPLE_DATA" -> SettingsSection.SAMPLE_DATA
+            else -> SettingsSection.MAIN_MENU
+        }
+        viewModel.initialSettingsSection = null
+        sec
+    }
+    var currentSection by remember { mutableStateOf(initialSection) }
 
     // Intercept hardware/gesture back press when inside a sub-category
     BackHandler(enabled = currentSection != SettingsSection.MAIN_MENU) {
@@ -479,6 +490,8 @@ fun switchAppIcon(context: android.content.Context, styleIndex: Int) {
         val targetAlias = aliases[styleIndex]
         val intent = android.content.Intent().apply {
             setClassName(packageName, targetAlias)
+            putExtra("start_screen", "settings")
+            putExtra("start_section", "DISPLAY")
             addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
         context.startActivity(intent)

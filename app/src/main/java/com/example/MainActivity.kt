@@ -17,6 +17,10 @@ import com.example.ui.MainViewModel
 import com.example.ui.screens.MainAppShell
 import com.example.ui.theme.GVJVaultTheme
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import com.example.ui.ScreenState
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +40,15 @@ class MainActivity : ComponentActivity() {
             val viewModel: MainViewModel = viewModel()
             val settings by viewModel.settings.collectAsStateWithLifecycle()
             val safeSettings = settings ?: com.example.data.local.entity.SettingsEntity()
+
+            LaunchedEffect(Unit) {
+                val startScreen = intent?.getStringExtra("start_screen")
+                if (startScreen == "settings") {
+                    val startSection = intent?.getStringExtra("start_section")
+                    viewModel.initialSettingsSection = startSection
+                    viewModel.navigateTo(ScreenState.Settings)
+                }
+            }
 
             GVJVaultTheme(
                 paletteName = safeSettings.currentTheme,
