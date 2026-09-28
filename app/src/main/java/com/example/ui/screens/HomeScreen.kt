@@ -558,7 +558,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Delete Actor & Linked Scenes",
+                                "Delete Actors / Studio Scene",
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -694,7 +694,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Delete Studio & Linked Scenes",
+                                "Delete Actors / Studio Scene",
                                 fontWeight = FontWeight.SemiBold
                             )
                         }

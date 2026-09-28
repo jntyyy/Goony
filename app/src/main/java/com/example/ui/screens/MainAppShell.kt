@@ -134,6 +134,32 @@ fun MainAppShell(viewModel: MainViewModel) {
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
 
+                    val isBookmarksSelected = currentScreen is ScreenState.Bookmarks
+                    NavigationDrawerItem(
+                        icon = {
+                            Icon(
+                                imageVector = if (isBookmarksSelected) Icons.Filled.Bookmark else Icons.Outlined.Bookmark,
+                                contentDescription = "Bookmarks",
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        label = { Text("Bookmarks", fontWeight = if (isBookmarksSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                        selected = isBookmarksSelected,
+                        onClick = {
+                            viewModel.navigateTo(ScreenState.Bookmarks)
+                            coroutineScope.launch { drawerState.close() }
+                        },
+                        colors = NavigationDrawerItemDefaults.colors(
+                            selectedContainerColor = accent.copy(alpha = 0.18f),
+                            selectedTextColor = accent,
+                            selectedIconColor = accent,
+                            unselectedTextColor = palette.textPrimary,
+                            unselectedIconColor = palette.textSecondary
+                        ),
+                        shape = CircleShape,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
+
                     val isActorsSelected = currentScreen is ScreenState.Actors || currentScreen is ScreenState.ActorScenes
                     NavigationDrawerItem(
                         icon = {
@@ -307,6 +333,10 @@ fun MainAppShell(viewModel: MainViewModel) {
                         ) { screen ->
                         when (screen) {
                             is ScreenState.Home -> HomeScreen(
+                                viewModel = viewModel,
+                                onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                            )
+                            is ScreenState.Bookmarks -> BookmarksScreen(
                                 viewModel = viewModel,
                                 onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
                             )

@@ -37,7 +37,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,10 +92,27 @@ fun LinkCard(
     val context = LocalContext.current
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
+    val haptic = LocalHapticFeedback.current
 
     // Internal Submenu state while active
     var subMenuState by remember { mutableStateOf<CardActionMenuState?>(null) }
     var selectedSource by remember { mutableStateOf<Source?>(null) }
+    var lastToggleTime by remember { mutableLongStateOf(0L) }
+    var bounceTrigger by remember { mutableIntStateOf(0) }
+    val bounceScale = remember { androidx.compose.animation.core.Animatable(1f) }
+
+    LaunchedEffect(bounceTrigger) {
+        if (bounceTrigger > 0) {
+            bounceScale.snapTo(0.92f)
+            bounceScale.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = 0.65f,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+        }
+    }
     
     val currentMenuState = when {
         !isActiveCard -> CardActionMenuState.CLOSED
@@ -102,11 +121,50 @@ fun LinkCard(
     }
     val isOverlayActive = currentMenuState != CardActionMenuState.CLOSED
 
-    // Close when dismissed from outside
+    // Close when dismissed from outside or record activation time
     LaunchedEffect(isActiveCard) {
-        if (!isActiveCard) {
+        if (isActiveCard) {
+            lastToggleTime = System.currentTimeMillis()
+        } else {
             subMenuState = null
             selectedSource = null
+        }
+    }
+
+    fun handleCoverTap() {
+        val now = System.currentTimeMillis()
+        if (now - lastToggleTime < 120L) return
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+
+        if (isOverlayActive) {
+            if (now - lastToggleTime < 280L) {
+                // Rapid tap while open -> re-trigger spring bounce feedback!
+                lastToggleTime = now
+                bounceTrigger++
+            } else {
+                lastToggleTime = now
+                onDismissActive()
+            }
+        } else {
+            lastToggleTime = now
+            onActivate()
+        }
+    }
+
+    fun handleScrimTap() {
+        val now = System.currentTimeMillis()
+        if (now - lastToggleTime < 120L) return
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+
+        if (currentMenuState != CardActionMenuState.MAIN_MENU) {
+            lastToggleTime = now
+            subMenuState = CardActionMenuState.MAIN_MENU
+        } else if (now - lastToggleTime < 280L) {
+            lastToggleTime = now
+            bounceTrigger++
+        } else {
+            lastToggleTime = now
+            onDismissActive()
         }
     }
 
@@ -202,9 +260,13 @@ fun LinkCard(
         label = "cover_reveal_alpha"
     )
     val coverScale by animateFloatAsState(
-        targetValue = if (isImageLoaded) 1f else 1.04f,
-        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
-        label = "cover_reveal_scale"
+        targetValue = when {
+            isOverlayActive -> 1.08f
+            !isImageLoaded -> 1.04f
+            else -> 1.0f
+        },
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "cover_scale"
     )
 
     Column(
@@ -227,11 +289,7 @@ fun LinkCard(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            if (isOverlayActive) {
-                                onDismissActive()
-                            } else {
-                                onActivate()
-                            }
+                            handleCoverTap()
                         }
                     } else {
                         Modifier
@@ -289,10 +347,8 @@ fun LinkCard(
                             .fillMaxSize()
                             .graphicsLayer {
                                 alpha = coverAlpha
-                                if (!isOverlayActive) {
-                                    scaleX = coverScale
-                                    scaleY = coverScale
-                                }
+                                scaleX = coverScale
+                                scaleY = coverScale
                             }
                     )
                 } else {
@@ -327,11 +383,7 @@ fun LinkCard(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            if (currentMenuState != CardActionMenuState.MAIN_MENU) {
-                                subMenuState = CardActionMenuState.MAIN_MENU
-                            } else {
-                                onDismissActive()
-                            }
+                            handleScrimTap()
                         }
                 )
             }
@@ -365,6 +417,10 @@ fun LinkCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.Center)
+                    .graphicsLayer {
+                        scaleX = bounceScale.value
+                        scaleY = bounceScale.value
+                    }
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 label = "center_spread_content"
             ) { state ->

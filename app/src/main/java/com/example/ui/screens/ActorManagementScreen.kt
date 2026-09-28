@@ -51,6 +51,8 @@ fun ActorManagementScreen(
 
     val actors by viewModel.allActors.collectAsStateWithLifecycle()
     val links by viewModel.allLinks.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val showCards = settings.showManagementCards
 
     var showAddDialog by remember { mutableStateOf(false) }
     var actorToEdit by remember { mutableStateOf<ActorEntity?>(null) }
@@ -181,16 +183,7 @@ fun ActorManagementScreen(
             ) {
                 items(sortedActors, key = { it.id }) { actor ->
                     val sceneCount = links.count { it.actorIds.contains(actor.id) }
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .border(1.dp, palette.border, RoundedCornerShape(14.dp))
-                            .clickable {
-                                viewModel.navigateTo(ScreenState.ActorScenes(actor.id))
-                            },
-                        colors = CardDefaults.cardColors(containerColor = palette.cardBg)
-                    ) {
+                    val itemContent = @Composable {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -205,7 +198,7 @@ fun ActorManagementScreen(
                                     modifier = Modifier
                                         .size(70.dp)
                                         .clip(CircleShape)
-                                        .border(2.dp, Color.White, CircleShape)
+                                        .border(2.dp, if (showCards) Color.White else accent.copy(alpha = 0.5f), CircleShape)
                                 )
                             } else {
                                 Box(
@@ -213,7 +206,7 @@ fun ActorManagementScreen(
                                         .size(70.dp)
                                         .clip(CircleShape)
                                         .background(palette.surface)
-                                        .border(2.dp, Color.White, CircleShape),
+                                        .border(2.dp, if (showCards) Color.White else accent.copy(alpha = 0.5f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(Icons.Default.Person, contentDescription = null, tint = palette.textMuted, modifier = Modifier.size(36.dp))
@@ -236,6 +229,32 @@ fun ActorManagementScreen(
                                 color = palette.textMuted,
                                 fontSize = 11.sp
                             )
+                        }
+                    }
+
+                    if (showCards) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .border(1.dp, palette.border, RoundedCornerShape(14.dp))
+                                .clickable {
+                                    viewModel.navigateTo(ScreenState.ActorScenes(actor.id))
+                                },
+                            colors = CardDefaults.cardColors(containerColor = palette.cardBg)
+                        ) {
+                            itemContent()
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable {
+                                    viewModel.navigateTo(ScreenState.ActorScenes(actor.id))
+                                }
+                        ) {
+                            itemContent()
                         }
                     }
                 }

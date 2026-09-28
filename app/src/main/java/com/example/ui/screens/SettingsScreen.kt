@@ -169,6 +169,14 @@ fun SettingsScreen(
                         onAccentChange = {
                             accentHex = it
                             saveAllSettings()
+                        },
+                        showCards = currentSettings.showManagementCards,
+                        onShowCardsChange = {
+                            viewModel.updateSettings(currentSettings.copy(showManagementCards = it))
+                        },
+                        appIconStyle = currentSettings.appIconStyle,
+                        onAppIconStyleChange = {
+                            viewModel.updateSettings(currentSettings.copy(appIconStyle = it))
                         }
                     )
                 }
@@ -336,7 +344,11 @@ private fun SettingsDisplaySection(
     themeName: String,
     onThemeChange: (String) -> Unit,
     accentHex: String,
-    onAccentChange: (String) -> Unit
+    onAccentChange: (String) -> Unit,
+    showCards: Boolean,
+    onShowCardsChange: (Boolean) -> Unit,
+    appIconStyle: Int,
+    onAppIconStyleChange: (Int) -> Unit
 ) {
     Column(
         modifier = modifier,
@@ -367,6 +379,56 @@ private fun SettingsDisplaySection(
             }
         }
 
+        // Cards layout toggle for Actors and Studios management
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Cards",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        "Display cards for Actors and Studios management",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Switch(
+                    checked = showCards,
+                    onCheckedChange = onShowCardsChange,
+                    modifier = Modifier.testTag("cards_management_switch")
+                )
+            }
+        }
+
+        // App Icon Style Picker
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                IconStylePicker(
+                    selectedIndex = appIconStyle,
+                    onSelectIconStyle = onAppIconStyleChange
+                )
+            }
+        }
+
         // Color Palette (Material You 3-split circular palette picker)
         Card(
             shape = RoundedCornerShape(20.dp),
@@ -377,6 +439,141 @@ private fun SettingsDisplaySection(
                     selectedId = accentHex,
                     onSelectPalette = onAccentChange
                 )
+            }
+        }
+    }
+}
+
+fun switchAppIcon(context: android.content.Context, styleIndex: Int) {
+    val packageManager = context.packageManager
+    val packageName = context.packageName
+
+    val aliases = listOf(
+        "com.example.MainActivityAliasDefault",
+        "com.example.MainActivityAliasBlue",
+        "com.example.MainActivityAliasOrange",
+        "com.example.MainActivityAliasDark",
+        "com.example.MainActivityAliasInverted"
+    )
+
+    for ((index, alias) in aliases.withIndex()) {
+        val componentName = android.content.ComponentName(packageName, alias)
+        val newState = if (index == styleIndex) {
+            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        } else {
+            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
+        try {
+            packageManager.setComponentEnabledSetting(
+                componentName,
+                newState,
+                android.content.pm.PackageManager.DONT_KILL_APP
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // Programmatically restart the application to apply the launcher icon change immediately
+    try {
+        val intent = packageManager.getLaunchIntentForPackage(packageName)
+        if (intent != null) {
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            context.startActivity(intent)
+            if (context is android.app.Activity) {
+                context.finish()
+            }
+            java.lang.System.exit(0)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+@Composable
+private fun IconStylePicker(
+    selectedIndex: Int,
+    onSelectIconStyle: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val accent = LocalAccentColor.current
+    val options = listOf(
+        Triple("Default", Color(0xFF58595e), Color.White),
+        Triple("Blue", Color(0xFF3B82F6), Color.White),
+        Triple("Orange", Color(0xFFD97706), Color.White),
+        Triple("Dark", Color(0xFF1F2937), Color.White),
+        Triple("Inverted", Color(0xFFF3F4F6), Color.Black)
+    )
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text(
+            text = "Icons",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            ),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            options.forEachIndexed { index, (label, bgColor, fgColor) ->
+                val isSelected = selectedIndex == index
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) accent.copy(alpha = 0.15f)
+                                else Color.Transparent
+                            )
+                            .border(
+                                width = if (isSelected) 2.5.dp else 1.dp,
+                                color = if (isSelected) accent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                shape = CircleShape
+                            )
+                            .clickable {
+                                onSelectIconStyle(index)
+                                switchAppIcon(context, index)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(bgColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .background(fgColor, CircleShape)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 11.sp
+                        ),
+                        color = if (isSelected) accent else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

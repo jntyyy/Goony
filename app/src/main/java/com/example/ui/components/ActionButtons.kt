@@ -107,15 +107,46 @@ fun ActionCircleButton(
                     modifier = Modifier.size(32.dp).rotate(iconRotation)
                 )
             } else if (text != null) {
-                Text(
-                    text = text,
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.sp,
-                    textAlign = TextAlign.Center,
-                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 1.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = text,
+                        color = Color.White.copy(alpha = 0.3f),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.offset(x = 0.5.dp, y = 0.5.dp),
+                        style = TextStyle(
+                            platformStyle = PlatformTextStyle(includeFontPadding = false),
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = Color.White.copy(alpha = 0.5f),
+                                offset = androidx.compose.ui.geometry.Offset(0f, 0f),
+                                blurRadius = 6f
+                            )
+                        )
+                    )
+                    Text(
+                        text = text,
+                        color = Color.White,
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        textAlign = TextAlign.Center,
+                        style = TextStyle(
+                            platformStyle = PlatformTextStyle(includeFontPadding = false),
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = Color.White.copy(alpha = 0.8f),
+                                offset = androidx.compose.ui.geometry.Offset(0f, 0f),
+                                blurRadius = 8f
+                            )
+                        )
+                    )
+                }
             }
         }
         Text(

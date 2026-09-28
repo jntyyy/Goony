@@ -256,18 +256,27 @@ fun IntegrationsDropdownDebridSection(
                             )
                         }
                     },
-                    supportingText = {
-                        Text(
-                            text = if (activeKey.isNotBlank()) "✓ Connected and saved" else selectedService.tokenUrlHint,
-                            color = if (activeKey.isNotBlank()) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
                     singleLine = true,
+                    maxLines = 1,
                     shape = RoundedCornerShape(28.dp),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(56.dp)
                         .testTag("debrid_api_key_input")
                 )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Text(
+                        text = if (activeKey.isNotBlank()) "✓ Connected and saved" else selectedService.tokenUrlHint,
+                        color = if (activeKey.isNotBlank()) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
+                }
 
                 if (activeKey.isNotBlank()) {
                     Row(

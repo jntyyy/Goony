@@ -27,6 +27,7 @@ enum class SortMode {
 
 sealed class ScreenState {
     object Home : ScreenState()
+    object Bookmarks : ScreenState()
     data class AddEditLink(val linkId: String? = null) : ScreenState()
     object Actors : ScreenState()
     data class AddEditActor(val actorId: String? = null) : ScreenState()
@@ -357,8 +358,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val allStudios = repository.allStudios.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val allHanime = repository.allHanime.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val allCoomers = repository.allCoomers.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val settings = repository.settings.map { it ?: SettingsEntity() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsEntity())
+    private val _settingsState = MutableStateFlow<SettingsEntity?>(null)
+    val settings: StateFlow<SettingsEntity> = repository.settings
+        .map { it ?: SettingsEntity() }
+        .onEach { dbSettings ->
+            if (_settingsState.value == null) {
+                _settingsState.value = dbSettings
+            }
+        }
+        .combine(_settingsState) { dbSettings, localOverride ->
+            localOverride ?: dbSettings
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsEntity())
 
     // Filtered scenes based on search, tabs, filter and sort
     val filteredLinks: StateFlow<List<LinkEntity>> = combine(
@@ -499,6 +510,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateSettings(newSettings: SettingsEntity) {
+        _settingsState.value = newSettings
         viewModelScope.launch {
             repository.updateSettings(newSettings)
         }

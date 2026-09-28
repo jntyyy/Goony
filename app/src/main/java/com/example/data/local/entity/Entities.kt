@@ -137,5 +137,7 @@ data class SettingsEntity(
     val geminiApiKey: String = "",
     val blurCovers: Boolean = false,
     val defaultAspectRatio: String = "16:9",
+    val showManagementCards: Boolean = true,
+    val appIconStyle: Int = 0,
     val lastSyncTime: Long = 0L
 )

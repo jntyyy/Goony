@@ -18,7 +18,7 @@ import com.example.data.local.entity.*
         CoomerEntity::class,
         SettingsEntity::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
