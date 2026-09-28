@@ -199,8 +199,8 @@ fun StashDbScreen(
 
             result.fold(
                 onSuccess = { fetched ->
-                    scenesList = fetched
-                    canLoadMore = fetched.size >= 30
+                    scenesList = fetched.scenes
+                    canLoadMore = fetched.scenes.size >= 30
                     isLoadingScenes = false
                 },
                 onFailure = { err ->
@@ -234,8 +234,8 @@ fun StashDbScreen(
 
             result.fold(
                 onSuccess = { fetched ->
-                    scenesList = fetched
-                    canLoadMore = fetched.size >= 30
+                    scenesList = fetched.scenes
+                    canLoadMore = fetched.scenes.size >= 30
                     isLoadingScenes = false
                 },
                 onFailure = { err ->
@@ -274,13 +274,13 @@ fun StashDbScreen(
 
                 result.fold(
                     onSuccess = { fetched ->
-                        if (fetched.isNotEmpty()) {
+                        if (fetched.scenes.isNotEmpty()) {
                             val existingIds = scenesList.map { it.id }.toSet()
-                            val newUnique = fetched.filter { !existingIds.contains(it.id) }
+                            val newUnique = fetched.scenes.filter { !existingIds.contains(it.id) }
                             scenesList = scenesList + newUnique
                             currentPage = nextPage
                         }
-                        canLoadMore = fetched.size >= 30
+                        canLoadMore = fetched.scenes.size >= 30
                         isLoadingMore = false
                     },
                     onFailure = { err ->

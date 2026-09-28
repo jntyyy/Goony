@@ -30,7 +30,6 @@ data class StashScene(
     val title: String,
     val details: String? = null,
     val date: String? = null,
-    val studioId: String? = null,
     val studioName: String? = null,
     val studioLogo: String? = null,
     val coverUrl: String? = null,
@@ -38,8 +37,8 @@ data class StashScene(
 )
 
 data class StashSceneQueryResult(
-    val count: Int,
-    val scenes: List<StashScene>
+    val count: Int = 0,
+    val scenes: List<StashScene> = emptyList()
 )
 
 object StashDbApiService {
@@ -108,8 +107,8 @@ object StashDbApiService {
                 val item = performersArray.optJSONObject(i) ?: continue
                 val gender = item.optString("gender", "").uppercase()
 
-                // Skip strictly male performers, but accept FEMALE, TRANSGENDER_FEMALE, or unspecified/empty
-                if (gender == "MALE") {
+                // Filter: strictly accept female performers only
+                if (gender != "FEMALE") {
                     continue
                 }
 
@@ -237,7 +236,7 @@ object StashDbApiService {
         performerId: String,
         apiKey: String,
         page: Int = 1,
-        perPage: Int = 50
+        perPage: Int = 20
     ): Result<StashSceneQueryResult> = withContext(Dispatchers.IO) {
         try {
             if (apiKey.isBlank()) {
@@ -332,7 +331,7 @@ object StashDbApiService {
         studioId: String,
         apiKey: String,
         page: Int = 1,
-        perPage: Int = 50
+        perPage: Int = 20
     ): Result<StashSceneQueryResult> = withContext(Dispatchers.IO) {
         try {
             if (apiKey.isBlank()) {
@@ -374,225 +373,11 @@ object StashDbApiService {
                 }
             """.trimIndent()
 
-            // Try parentStudio first (matches parent studio + all its sub-studios and standalone studios)
-            val parentStudioInput = JSONObject().apply {
-                put("parentStudio", studioId)
-                put("page", page)
-                put("per_page", perPage)
-                put("direction", "DESC")
-                put("sort", "DATE")
-            }
-
-            val bodyJson = JSONObject().apply {
-                put("query", gqlQuery)
-                put("variables", JSONObject().apply { put("input", parentStudioInput) })
-            }
-
-            val request = Request.Builder()
-                .url(GRAPHQL_ENDPOINT)
-                .header("ApiKey", apiKey.trim())
-                .header("Content-Type", "application/json")
-                .header("Accept", "application/json")
-                .post(bodyJson.toString().toRequestBody(JSON_MEDIA_TYPE))
-                .build()
-
-            val response = NetworkClient.okHttpClient.newCall(request).execute()
-            val rawBody = response.body?.string() ?: ""
-
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("StashDB Error: HTTP ${response.code}"))
-            }
-
-            val json = JSONObject(rawBody)
-            if (json.has("errors")) {
-                val errorMsg = json.getJSONArray("errors").optJSONObject(0)?.optString("message") ?: "GraphQL query error"
-                return@withContext Result.failure(Exception(errorMsg))
-            }
-
-            val dataObj = json.optJSONObject("data")
-            val queryScenesObj = dataObj?.optJSONObject("queryScenes")
-            val count = queryScenesObj?.optInt("count", 0) ?: 0
-            val scenesArray = queryScenesObj?.optJSONArray("scenes") ?: JSONArray()
-            var results = parseScenesJson(scenesArray)
-
-            // If parentStudio returned 0 results, fallback to exact studios filter
-            if (results.isEmpty() && count == 0) {
-                val fallbackInput = JSONObject().apply {
-                    put("studios", JSONObject().apply {
-                        put("value", JSONArray().apply { put(studioId) })
-                        put("modifier", "INCLUDES")
-                    })
-                    put("page", page)
-                    put("per_page", perPage)
-                    put("direction", "DESC")
-                    put("sort", "DATE")
-                }
-
-                val fallbackBody = JSONObject().apply {
-                    put("query", gqlQuery)
-                    put("variables", JSONObject().apply { put("input", fallbackInput) })
-                }
-
-                val fallbackReq = Request.Builder()
-                    .url(GRAPHQL_ENDPOINT)
-                    .header("ApiKey", apiKey.trim())
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "application/json")
-                    .post(fallbackBody.toString().toRequestBody(JSON_MEDIA_TYPE))
-                    .build()
-
-                val fallbackResp = NetworkClient.okHttpClient.newCall(fallbackReq).execute()
-                val fallbackRaw = fallbackResp.body?.string() ?: ""
-                if (fallbackResp.isSuccessful) {
-                    val fallbackJson = JSONObject(fallbackRaw)
-                    val fallbackData = fallbackJson.optJSONObject("data")?.optJSONObject("queryScenes")
-                    val fallbackCount = fallbackData?.optInt("count", 0) ?: 0
-                    val fallbackArray = fallbackData?.optJSONArray("scenes") ?: JSONArray()
-                    results = parseScenesJson(fallbackArray)
-                    return@withContext Result.success(StashSceneQueryResult(count = fallbackCount, scenes = results))
-                }
-            }
-
-            Result.success(StashSceneQueryResult(count = count, scenes = results))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    private fun parseScenesJson(scenesArray: JSONArray): List<StashScene> {
-        val results = mutableListOf<StashScene>()
-        for (i in 0 until scenesArray.length()) {
-            val item = scenesArray.optJSONObject(i) ?: continue
-            val id = item.optString("id")
-            if (id.isBlank()) continue
-
-            val rawTitle = item.optString("title").ifBlank { null }
-            val details = item.optString("details").ifBlank { null }
-            val date = item.optString("date").ifBlank { null }
-
-            val imagesArray = item.optJSONArray("images")
-            val coverUrl = if (imagesArray != null && imagesArray.length() > 0) {
-                imagesArray.optJSONObject(0)?.optString("url")?.ifBlank { null }
-            } else null
-
-            val studioObj = item.optJSONObject("studio")
-            val studioId = studioObj?.optString("id")?.ifBlank { null }
-            val studioName = studioObj?.optString("name")?.ifBlank { null }
-            val studioImages = studioObj?.optJSONArray("images")
-            val studioLogo = if (studioImages != null && studioImages.length() > 0) {
-                studioImages.optJSONObject(0)?.optString("url")?.ifBlank { null }
-            } else null
-
-            // Parse performers (skip strictly male, keep female / transgender female / unspecified)
-            val femalePerformers = mutableListOf<StashPerformer>()
-            val performersArray = item.optJSONArray("performers")
-            if (performersArray != null) {
-                for (j in 0 until performersArray.length()) {
-                    val perfEntry = performersArray.optJSONObject(j) ?: continue
-                    val perfObj = perfEntry.optJSONObject("performer") ?: continue
-                    val gender = perfObj.optString("gender", "").uppercase()
-
-                    // Skip strictly male performers
-                    if (gender == "MALE") {
-                        continue
-                    }
-
-                    val perfId = perfObj.optString("id")
-                    val perfName = perfObj.optString("name")
-                    if (perfId.isBlank() || perfName.isBlank()) continue
-
-                    val perfImages = perfObj.optJSONArray("images")
-                    val perfImage = if (perfImages != null && perfImages.length() > 0) {
-                        perfImages.optJSONObject(0)?.optString("url")?.ifBlank { null }
-                    } else null
-
-                    femalePerformers.add(
-                        StashPerformer(
-                            id = perfId,
-                            name = perfName,
-                            gender = gender,
-                            imageUrl = perfImage
-                        )
-                    )
-                }
-            }
-
-            // Provide fallback title if blank
-            val title = rawTitle ?: if (!studioName.isNullOrBlank() && !date.isNullOrBlank()) {
-                "$studioName - $date"
-            } else if (!date.isNullOrBlank()) {
-                "Scene $date"
-            } else {
-                "Scene ${id.take(8)}"
-            }
-
-            results.add(
-                StashScene(
-                    id = id,
-                    title = title,
-                    details = details,
-                    date = date,
-                    studioId = studioId,
-                    studioName = studioName,
-                    studioLogo = studioLogo,
-                    coverUrl = coverUrl,
-                    femalePerformers = femalePerformers
-                )
-            )
-        }
-        return results
-    }
-
-    suspend fun queryScenesByText(
-        text: String,
-        apiKey: String,
-        page: Int = 1,
-        perPage: Int = 50
-    ): Result<StashSceneQueryResult> = withContext(Dispatchers.IO) {
-        try {
-            if (apiKey.isBlank()) {
-                return@withContext Result.failure(Exception("StashDB API Key is required"))
-            }
-
-            val gqlQuery = """
-                query QueryScenesByText(${'$'}input: SceneQueryInput!) {
-                  queryScenes(input: ${'$'}input) {
-                    count
-                    scenes {
-                      id
-                      title
-                      details
-                      date
-                      images {
-                        url
-                      }
-                      studio {
-                        id
-                        name
-                        images {
-                          url
-                        }
-                      }
-                      performers {
-                        as
-                        performer {
-                          id
-                          name
-                          gender
-                          images {
-                            url
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-            """.trimIndent()
-
             val inputObj = JSONObject().apply {
-                if (text.isNotBlank()) {
-                    put("text", text)
-                }
+                put("studios", JSONObject().apply {
+                    put("value", JSONArray().apply { put(studioId) })
+                    put("modifier", "INCLUDES")
+                })
                 put("page", page)
                 put("per_page", perPage)
                 put("direction", "DESC")
@@ -637,11 +422,78 @@ object StashDbApiService {
         }
     }
 
-    suspend fun queryRecentScenes(
-        apiKey: String,
-        page: Int = 1,
-        perPage: Int = 50
-    ): Result<StashSceneQueryResult> = queryScenesByText(text = "", apiKey = apiKey, page = page, perPage = perPage)
+    private fun parseScenesJson(scenesArray: JSONArray): List<StashScene> {
+        val results = mutableListOf<StashScene>()
+        for (i in 0 until scenesArray.length()) {
+            val item = scenesArray.optJSONObject(i) ?: continue
+            val id = item.optString("id")
+            val title = item.optString("title")
+            if (id.isBlank() || title.isBlank()) continue
+
+            val details = item.optString("details").ifBlank { null }
+            val date = item.optString("date").ifBlank { null }
+
+            val imagesArray = item.optJSONArray("images")
+            val coverUrl = if (imagesArray != null && imagesArray.length() > 0) {
+                imagesArray.optJSONObject(0)?.optString("url")?.ifBlank { null }
+            } else null
+
+            val studioObj = item.optJSONObject("studio")
+            val studioName = studioObj?.optString("name")?.ifBlank { null }
+            val studioImages = studioObj?.optJSONArray("images")
+            val studioLogo = if (studioImages != null && studioImages.length() > 0) {
+                studioImages.optJSONObject(0)?.optString("url")?.ifBlank { null }
+            } else null
+
+            // Filter female performers only
+            val femalePerformers = mutableListOf<StashPerformer>()
+            val performersArray = item.optJSONArray("performers")
+            if (performersArray != null) {
+                for (j in 0 until performersArray.length()) {
+                    val perfEntry = performersArray.optJSONObject(j) ?: continue
+                    val perfObj = perfEntry.optJSONObject("performer") ?: continue
+                    val gender = perfObj.optString("gender", "").uppercase()
+
+                    // Strictly accept female performers only
+                    if (gender != "FEMALE") {
+                        continue
+                    }
+
+                    val perfId = perfObj.optString("id")
+                    val perfName = perfObj.optString("name")
+                    if (perfId.isBlank() || perfName.isBlank()) continue
+
+                    val perfImages = perfObj.optJSONArray("images")
+                    val perfImage = if (perfImages != null && perfImages.length() > 0) {
+                        perfImages.optJSONObject(0)?.optString("url")?.ifBlank { null }
+                    } else null
+
+                    femalePerformers.add(
+                        StashPerformer(
+                            id = perfId,
+                            name = perfName,
+                            gender = gender,
+                            imageUrl = perfImage
+                        )
+                    )
+                }
+            }
+
+            results.add(
+                StashScene(
+                    id = id,
+                    title = title,
+                    details = details,
+                    date = date,
+                    studioName = studioName,
+                    studioLogo = studioLogo,
+                    coverUrl = coverUrl,
+                    femalePerformers = femalePerformers
+                )
+            )
+        }
+        return results
+    }
 
     suspend fun validateApiKey(apiKey: String): Boolean = withContext(Dispatchers.IO) {
         try {
