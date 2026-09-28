@@ -63,6 +63,7 @@ fun SettingsScreen(
     var accentHex by remember(currentSettings) { mutableStateOf(currentSettings.accentColorHex) }
     var torboxKey by remember(currentSettings) { mutableStateOf(currentSettings.torboxApiKey) }
     var rdKey by remember(currentSettings) { mutableStateOf(currentSettings.realDebridApiKey) }
+    var stashDbKey by remember(currentSettings) { mutableStateOf(currentSettings.stashDbApiKey) }
 
     var sampleDataStatus by remember { mutableStateOf("") }
     val initialSection = remember {
@@ -97,7 +98,8 @@ fun SettingsScreen(
                 currentTheme = themeName,
                 accentColorHex = accentHex,
                 torboxApiKey = torboxKey.trim(),
-                realDebridApiKey = rdKey.trim()
+                realDebridApiKey = rdKey.trim(),
+                stashDbApiKey = stashDbKey.trim()
             )
         )
     }
@@ -192,23 +194,107 @@ fun SettingsScreen(
                     )
                 }
                 SettingsSection.INTEGRATIONS -> {
-                    IntegrationsDropdownDebridSection(
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp),
-                        realDebridKey = rdKey,
-                        onRealDebridKeyChange = {
-                            rdKey = it
-                            viewModel.updateSettings(currentSettings.copy(realDebridApiKey = it.trim()))
-                        },
-                        torboxKey = torboxKey,
-                        onTorboxKeyChange = {
-                            torboxKey = it
-                            viewModel.updateSettings(currentSettings.copy(torboxApiKey = it.trim()))
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        IntegrationsDropdownDebridSection(
+                            modifier = Modifier.fillMaxWidth(),
+                            realDebridKey = rdKey,
+                            onRealDebridKeyChange = {
+                                rdKey = it
+                                viewModel.updateSettings(currentSettings.copy(realDebridApiKey = it.trim()))
+                            },
+                            torboxKey = torboxKey,
+                            onTorboxKeyChange = {
+                                torboxKey = it
+                                viewModel.updateSettings(currentSettings.copy(torboxApiKey = it.trim()))
+                            }
+                        )
+
+                        // StashDB Integration Card
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = accent.copy(alpha = 0.15f),
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.Inventory2,
+                                                contentDescription = "StashDB",
+                                                tint = accent,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "StashDB Integration",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            color = palette.textPrimary
+                                        )
+                                        Text(
+                                            text = "Metadata API from stashdb.org",
+                                            fontSize = 12.sp,
+                                            color = palette.textSecondary
+                                        )
+                                    }
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (stashDbKey.isNotBlank()) Color(0xFF10B981).copy(alpha = 0.15f) else palette.border
+                                    ) {
+                                        Text(
+                                            text = if (stashDbKey.isNotBlank()) "Connected" else "Not set",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (stashDbKey.isNotBlank()) Color(0xFF10B981) else palette.textMuted,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+
+                                OutlinedTextField(
+                                    value = stashDbKey,
+                                    onValueChange = {
+                                        stashDbKey = it
+                                        viewModel.updateSettings(currentSettings.copy(stashDbApiKey = it.trim()))
+                                    },
+                                    label = { Text("StashDB API Key") },
+                                    placeholder = { Text("Paste API Key from stashdb.org profile") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    trailingIcon = {
+                                        if (stashDbKey.isNotEmpty()) {
+                                            IconButton(onClick = {
+                                                stashDbKey = ""
+                                                viewModel.updateSettings(currentSettings.copy(stashDbApiKey = ""))
+                                            }) {
+                                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         }
-                    )
+                    }
                 }
                 SettingsSection.DATA_BACKUP -> {
                     DataBackupSection(

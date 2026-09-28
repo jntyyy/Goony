@@ -42,6 +42,7 @@ sealed class ScreenState {
     data class AddEditHanime(val hanimeId: String? = null) : ScreenState()
     data class HanimeDetail(val hanimeId: String) : ScreenState()
     data class PhotosetViewer(val title: String, val images: List<String>, val initialIndex: Int = 0) : ScreenState()
+    object StashDb : ScreenState()
     object Settings : ScreenState()
 }
 
@@ -90,12 +91,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 repository.deleteLinkById(it.id)
             }
 
-            // Ensure Real-Debrid API Key is populated with the requested default key if currently empty
+            // Ensure Real-Debrid and StashDB API Keys are populated with the requested default keys if currently empty
             val currentSett = repository.settings.first() ?: SettingsEntity()
-            if (currentSett.realDebridApiKey.isBlank()) {
-                repository.updateSettings(
-                    currentSett.copy(realDebridApiKey = "HNR2RHUY4K6JYXNFJCB4QXAJ57TKDQKTQOPYEXZ2VANQO7TN5YJQ")
-                )
+            var updatedSett = currentSett
+            if (updatedSett.realDebridApiKey.isBlank()) {
+                updatedSett = updatedSett.copy(realDebridApiKey = "HNR2RHUY4K6JYXNFJCB4QXAJ57TKDQKTQOPYEXZ2VANQO7TN5YJQ")
+            }
+            if (updatedSett.stashDbApiKey.isBlank()) {
+                updatedSett = updatedSett.copy(stashDbApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiIwMTlmYmRlYi00MDRlLTdjYmMtOTFhNy00YTA4MjhjMTQ5ZjQiLCJzdWIiOiJBUElLZXkiLCJpYXQiOjE3ODU1OTc3Mzl9.J9ojzjsBP8sBOLZNUACF94EWwren89ql8TDcW3gT7WY")
+            }
+            if (updatedSett != currentSett) {
+                repository.updateSettings(updatedSett)
             }
 
             // Always insert / update all sample test dataset scenes, actors, and studios into the database

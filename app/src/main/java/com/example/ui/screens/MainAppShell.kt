@@ -264,6 +264,32 @@ fun MainAppShell(viewModel: MainViewModel) {
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
 
+                    val isStashDbSelected = currentScreen is ScreenState.StashDb
+                    NavigationDrawerItem(
+                        icon = {
+                            Icon(
+                                imageVector = if (isStashDbSelected) Icons.Filled.Inventory2 else Icons.Outlined.Inventory2,
+                                contentDescription = "StashDB",
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        label = { Text("StashDB", fontWeight = if (isStashDbSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                        selected = isStashDbSelected,
+                        onClick = {
+                            viewModel.navigateTo(ScreenState.StashDb)
+                            coroutineScope.launch { drawerState.close() }
+                        },
+                        colors = NavigationDrawerItemDefaults.colors(
+                            selectedContainerColor = accent.copy(alpha = 0.18f),
+                            selectedTextColor = accent,
+                            selectedIconColor = accent,
+                            unselectedTextColor = palette.textPrimary,
+                            unselectedIconColor = palette.textSecondary
+                        ),
+                        shape = CircleShape,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
+
                     Spacer(modifier = Modifier.weight(1f))
                     HorizontalDivider(color = palette.border)
                     Spacer(modifier = Modifier.height(12.dp))
@@ -360,6 +386,10 @@ fun MainAppShell(viewModel: MainViewModel) {
                             is ScreenState.AddEditHanime -> HanimeManagementScreen(viewModel)
                             is ScreenState.HanimeDetail -> HanimeDetailScreen(viewModel, screen.hanimeId)
                             is ScreenState.PhotosetViewer -> PhotosetViewerScreen(viewModel, screen.title, screen.images, screen.initialIndex)
+                            is ScreenState.StashDb -> StashDbScreen(
+                                viewModel = viewModel,
+                                onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                            )
                             is ScreenState.Settings -> SettingsScreen(viewModel)
                         }
                     }
