@@ -22,7 +22,14 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
 enum class SortMode {
-    NEWEST, OLDEST, TITLE_AZ, TITLE_ZA
+    CARD_NEWEST,      // New (تاريخ الكرت - أحدث)
+    CARD_OLDEST,      // Old (تاريخ الكرت - أقدم)
+    RECENTLY_ADDED,   // أضيفت مؤخراً (تاريخ الإضافة للتطبيق - أحدث)
+    OLDEST_ADDED,     // أضيفت قديماً (تاريخ الإضافة للتطبيق - أقدم)
+    NEWEST,           // Backward compatibility (maps to CARD_NEWEST)
+    OLDEST,           // Backward compatibility (maps to CARD_OLDEST)
+    TITLE_AZ,
+    TITLE_ZA
 }
 
 sealed class ScreenState {
@@ -410,8 +417,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         when (sort) {
-            SortMode.NEWEST -> list.sortedByDescending { it.assignedDate ?: it.createdAt }
-            SortMode.OLDEST -> list.sortedBy { it.assignedDate ?: it.createdAt }
+            SortMode.CARD_NEWEST, SortMode.NEWEST -> list.sortedByDescending { it.assignedDate ?: it.createdAt }
+            SortMode.CARD_OLDEST, SortMode.OLDEST -> list.sortedBy { it.assignedDate ?: it.createdAt }
+            SortMode.RECENTLY_ADDED -> list.sortedByDescending { it.createdAt }
+            SortMode.OLDEST_ADDED -> list.sortedBy { it.createdAt }
             SortMode.TITLE_AZ -> list.sortedBy { it.title.lowercase() }
             SortMode.TITLE_ZA -> list.sortedByDescending { it.title.lowercase() }
         }

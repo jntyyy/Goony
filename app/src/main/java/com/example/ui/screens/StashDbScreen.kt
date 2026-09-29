@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -34,22 +35,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -58,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -633,43 +638,99 @@ fun StashDbScreen(
                 .fillMaxSize()
                 .padding(top = padding.calculateTopPadding())
         ) {
-            // Two Mode Selector Tabs: Actors & Studio
-            PrimaryTabRow(
-                selectedTabIndex = activeType.ordinal,
-                containerColor = palette.surface,
-                contentColor = accent,
-                divider = { HorizontalDivider(color = palette.border) }
+            // Two Mode Selector Tabs: Actors & Studio (No rectangular selection overlay on click)
+            Surface(
+                color = palette.surface,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Tab(
-                    selected = activeType == StashSearchType.ACTORS,
-                    onClick = { activeType = StashSearchType.ACTORS },
-                    text = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        // Actors Tab
+                        val isActorsSelected = activeType == StashSearchType.ACTORS
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { activeType = StashSearchType.ACTORS }
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.RecentActors, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Text("Actors", fontWeight = FontWeight.SemiBold)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.RecentActors,
+                                    contentDescription = null,
+                                    tint = if (isActorsSelected) accent else palette.textSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Actors",
+                                    fontWeight = if (isActorsSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                    color = if (isActorsSelected) accent else palette.textSecondary
+                                )
+                            }
+                            if (isActorsSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .fillMaxWidth()
+                                        .height(3.dp)
+                                        .background(accent)
+                                )
+                            }
                         }
-                    },
-                    selectedContentColor = accent,
-                    unselectedContentColor = palette.textSecondary
-                )
-                Tab(
-                    selected = activeType == StashSearchType.STUDIO,
-                    onClick = { activeType = StashSearchType.STUDIO },
-                    text = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+
+                        // Studio Tab
+                        val isStudioSelected = activeType == StashSearchType.STUDIO
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { activeType = StashSearchType.STUDIO }
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.MovieCreation, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Text("Studio", fontWeight = FontWeight.SemiBold)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MovieCreation,
+                                    contentDescription = null,
+                                    tint = if (isStudioSelected) accent else palette.textSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Studio",
+                                    fontWeight = if (isStudioSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                    color = if (isStudioSelected) accent else palette.textSecondary
+                                )
+                            }
+                            if (isStudioSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .fillMaxWidth()
+                                        .height(3.dp)
+                                        .background(accent)
+                                )
+                            }
                         }
-                    },
-                    selectedContentColor = accent,
-                    unselectedContentColor = palette.textSecondary
-                )
+                    }
+                    HorizontalDivider(color = palette.border)
+                }
             }
 
             // Horizontal Results Row with Smooth Native Scroll-Driven Collapse
@@ -718,7 +779,9 @@ fun StashDbScreen(
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalFadeEdge(24.dp)
                         ) {
                             items(performerResults, key = { it.id }) { performer ->
                                 val isSelected = selectedPerformer?.id == performer.id
@@ -744,7 +807,9 @@ fun StashDbScreen(
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalFadeEdge(24.dp)
                         ) {
                             items(studioResults, key = { it.id }) { studio ->
                                 val isSelected = selectedStudio?.id == studio.id
@@ -920,8 +985,11 @@ fun HorizontalActorCircleItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(76.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
             .testTag("stash_actor_${performer.id}")
     ) {
         Box(
@@ -1020,8 +1088,11 @@ fun HorizontalStudioCircleItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(76.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
             .testTag("stash_studio_${studio.id}")
     ) {
         Box(
@@ -1140,7 +1211,11 @@ fun StashGridPhotoCard(
                 scaleX = cardSelectionScale
                 scaleY = cardSelectionScale
             }
-            .clickable(onClick = onToggleSelect)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onToggleSelect
+            )
             .testTag("stash_scene_${scene.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = palette.surface),
@@ -1513,3 +1588,29 @@ private fun StudioFallbackEmblem(name: String, accentColor: Color) {
         )
     }
 }
+
+/**
+ * Lightweight, GPU-accelerated horizontal fade mask for smooth gradient edge aesthetic.
+ */
+private fun Modifier.horizontalFadeEdge(fadeWidth: Dp = 24.dp): Modifier = this.then(
+    Modifier
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val fadePx = fadeWidth.toPx()
+            if (size.width > fadePx * 2 && fadePx > 0f) {
+                val leftFraction = (fadePx / size.width).coerceIn(0f, 0.49f)
+                val rightFraction = 1f - leftFraction
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        leftFraction to Color.Black,
+                        rightFraction to Color.Black,
+                        1f to Color.Transparent
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+        }
+)
+

@@ -35,6 +35,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -533,7 +534,7 @@ fun LinkCard(
                                     modifier = Modifier
                                         .padding(horizontal = 4.dp)
                                         .width(72.dp)
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .clip(RectangleShape)
                                         .clickable {
                                             subMenuState = null
                                             onDismissActive()
@@ -728,7 +729,7 @@ fun LinkCard(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
+                                        .clip(RectangleShape)
                                         .clickable {
                                             subMenuState = null
                                             onDismissActive()
@@ -778,7 +779,7 @@ fun LinkCard(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RectangleShape)
                                     .clickable(enabled = firstStudioId != null) {
                                         if (firstStudioId != null) {
                                             subMenuState = null

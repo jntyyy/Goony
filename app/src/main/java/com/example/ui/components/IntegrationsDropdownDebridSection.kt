@@ -91,7 +91,7 @@ fun IntegrationsDropdownDebridSection(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Debrid Service Integration",
+                    text = "Debrid Service",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
@@ -235,8 +235,8 @@ fun IntegrationsDropdownDebridSection(
                 OutlinedTextField(
                     value = activeKey,
                     onValueChange = onActiveKeyChange,
-                    label = { Text("${selectedService.title} Token") },
-                    placeholder = { Text("Paste ${selectedService.title} API token here...") },
+                    placeholder = { Text("Paste ${selectedService.title} API token here...", fontSize = 14.sp) },
+                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp, lineHeight = 20.sp),
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Outlined.Key,

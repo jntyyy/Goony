@@ -22,8 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,6 +58,7 @@ fun SettingsScreen(
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
     val coroutineScope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
 
     val currentSettingsRaw by viewModel.settings.collectAsStateWithLifecycle()
     val currentSettings = currentSettingsRaw ?: SettingsEntity()
@@ -64,6 +68,7 @@ fun SettingsScreen(
     var torboxKey by remember(currentSettings) { mutableStateOf(currentSettings.torboxApiKey) }
     var rdKey by remember(currentSettings) { mutableStateOf(currentSettings.realDebridApiKey) }
     var stashDbKey by remember(currentSettings) { mutableStateOf(currentSettings.stashDbApiKey) }
+    var showStashDbKey by remember { mutableStateOf(false) }
 
     var sampleDataStatus by remember { mutableStateOf("") }
     val initialSection = remember {
@@ -191,6 +196,10 @@ fun SettingsScreen(
                         appIconStyle = currentSettings.appIconStyle,
                         onAppIconStyleChange = {
                             viewModel.updateSettings(currentSettings.copy(appIconStyle = it))
+                        },
+                        transitionStyle = currentSettings.transitionStyle,
+                        onTransitionStyleChange = {
+                            viewModel.updateSettings(currentSettings.copy(transitionStyle = it))
                         }
                     )
                 }
@@ -217,7 +226,7 @@ fun SettingsScreen(
                             }
                         )
 
-                        // StashDB Integration Card
+                        // Metadata Card (StashDB)
                         Card(
                             shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -225,50 +234,56 @@ fun SettingsScreen(
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
+                                Text(
+                                    text = "Metadata",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Surface(
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Key,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "StashDB API Key",
+                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+
+                                    FilledTonalButton(
+                                        onClick = {
+                                            clipboardManager.getText()?.text?.let { clipboardText ->
+                                                if (clipboardText.isNotBlank()) {
+                                                    stashDbKey = clipboardText.trim()
+                                                    viewModel.updateSettings(currentSettings.copy(stashDbApiKey = clipboardText.trim()))
+                                                }
+                                            }
+                                        },
                                         shape = CircleShape,
-                                        color = accent.copy(alpha = 0.15f),
-                                        modifier = Modifier.size(40.dp)
+                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = Icons.Default.Inventory2,
-                                                contentDescription = "StashDB",
-                                                tint = accent,
-                                                modifier = Modifier.size(22.dp)
-                                            )
-                                        }
-                                    }
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "StashDB Integration",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 16.sp,
-                                            color = palette.textPrimary
+                                        Icon(
+                                            imageVector = Icons.Default.ContentPaste,
+                                            contentDescription = "Paste",
+                                            modifier = Modifier.size(15.dp)
                                         )
-                                        Text(
-                                            text = "Metadata API from stashdb.org",
-                                            fontSize = 12.sp,
-                                            color = palette.textSecondary
-                                        )
-                                    }
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (stashDbKey.isNotBlank()) Color(0xFF10B981).copy(alpha = 0.15f) else palette.border
-                                    ) {
-                                        Text(
-                                            text = if (stashDbKey.isNotBlank()) "Connected" else "Not set",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = if (stashDbKey.isNotBlank()) Color(0xFF10B981) else palette.textMuted,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Paste", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                                     }
                                 }
 
@@ -278,21 +293,65 @@ fun SettingsScreen(
                                         stashDbKey = it
                                         viewModel.updateSettings(currentSettings.copy(stashDbApiKey = it.trim()))
                                     },
-                                    label = { Text("StashDB API Key") },
-                                    placeholder = { Text("Paste API Key from stashdb.org profile") },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = { Text("Paste StashDB API token here...", fontSize = 14.sp) },
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp, lineHeight = 20.sp),
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Key,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .padding(start = 10.dp)
+                                                .size(22.dp)
+                                        )
+                                    },
+                                    visualTransformation = if (showStashDbKey) VisualTransformation.None else PasswordVisualTransformation(),
                                     trailingIcon = {
-                                        if (stashDbKey.isNotEmpty()) {
-                                            IconButton(onClick = {
+                                        IconButton(onClick = { showStashDbKey = !showStashDbKey }) {
+                                            Icon(
+                                                imageVector = if (showStashDbKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                contentDescription = if (showStashDbKey) "Hide API Key" else "Show API Key"
+                                            )
+                                        }
+                                    },
+                                    singleLine = true,
+                                    maxLines = 1,
+                                    shape = RoundedCornerShape(28.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp)
+                                        .testTag("stashdb_api_key_input")
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(20.dp),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    Text(
+                                        text = "Get API key from stashdb.org profile",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 12.sp
+                                    )
+                                }
+
+                                if (stashDbKey.isNotBlank()) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        TextButton(
+                                            onClick = {
                                                 stashDbKey = ""
                                                 viewModel.updateSettings(currentSettings.copy(stashDbApiKey = ""))
-                                            }) {
-                                                Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                            }
+                                            },
+                                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                        ) {
+                                            Text("Clear Token", fontSize = 13.sp)
                                         }
                                     }
-                                )
+                                }
                             }
                         }
                     }
@@ -446,8 +505,13 @@ private fun SettingsDisplaySection(
     showCards: Boolean,
     onShowCardsChange: (Boolean) -> Unit,
     appIconStyle: Int,
-    onAppIconStyleChange: (Int) -> Unit
+    onAppIconStyleChange: (Int) -> Unit,
+    transitionStyle: Int,
+    onTransitionStyleChange: (Int) -> Unit
 ) {
+    val palette = LocalVaultPalette.current
+    val accent = LocalAccentColor.current
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -474,6 +538,194 @@ private fun SettingsDisplaySection(
                     selectedTheme = themeName,
                     onSelectTheme = onThemeChange
                 )
+            }
+        }
+
+        // Screen Transition Animation Switcher
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    "Transition Animation",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                // Row 1: Motion & Native
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Option 0: Dynamic Motion (Current)
+                    val isOption0Selected = transitionStyle == 0
+                    Surface(
+                        onClick = { onTransitionStyleChange(0) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isOption0Selected) accent.copy(alpha = 0.15f) else palette.cardBg,
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (isOption0Selected) 2.dp else 1.dp,
+                            color = if (isOption0Selected) accent else palette.border
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Animation,
+                                contentDescription = null,
+                                tint = if (isOption0Selected) accent else palette.textSecondary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "Dynamic Motion",
+                                fontSize = 12.5.sp,
+                                fontWeight = if (isOption0Selected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isOption0Selected) accent else palette.textPrimary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Text(
+                                text = "Vertical Slide",
+                                fontSize = 10.sp,
+                                color = palette.textMuted,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+
+                    // Option 1: Native Simple & Smooth
+                    val isOption1Selected = transitionStyle == 1
+                    Surface(
+                        onClick = { onTransitionStyleChange(1) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isOption1Selected) accent.copy(alpha = 0.15f) else palette.cardBg,
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (isOption1Selected) 2.dp else 1.dp,
+                            color = if (isOption1Selected) accent else palette.border
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = if (isOption1Selected) accent else palette.textSecondary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "Native Simple",
+                                fontSize = 12.5.sp,
+                                fontWeight = if (isOption1Selected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isOption1Selected) accent else palette.textPrimary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Text(
+                                text = "Scale & Fade",
+                                fontSize = 10.sp,
+                                color = palette.textMuted,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                // Row 2: Ultra Light Crossfade & Instant Off
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Option 2: Ultra Light Crossfade
+                    val isOption2Selected = transitionStyle == 2
+                    Surface(
+                        onClick = { onTransitionStyleChange(2) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isOption2Selected) accent.copy(alpha = 0.15f) else palette.cardBg,
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (isOption2Selected) 2.dp else 1.dp,
+                            color = if (isOption2Selected) accent else palette.border
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FlashOn,
+                                contentDescription = null,
+                                tint = if (isOption2Selected) accent else palette.textSecondary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "Ultra Crossfade",
+                                fontSize = 12.5.sp,
+                                fontWeight = if (isOption2Selected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isOption2Selected) accent else palette.textPrimary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Text(
+                                text = "Pure Fade 90ms",
+                                fontSize = 10.sp,
+                                color = palette.textMuted,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+
+                    // Option 3: Instant Off (None)
+                    val isOption3Selected = transitionStyle == 3
+                    Surface(
+                        onClick = { onTransitionStyleChange(3) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isOption3Selected) accent.copy(alpha = 0.15f) else palette.cardBg,
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (isOption3Selected) 2.dp else 1.dp,
+                            color = if (isOption3Selected) accent else palette.border
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Speed,
+                                contentDescription = null,
+                                tint = if (isOption3Selected) accent else palette.textSecondary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "Instant (Off)",
+                                fontSize = 12.5.sp,
+                                fontWeight = if (isOption3Selected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isOption3Selected) accent else palette.textPrimary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Text(
+                                text = "No Motion 0ms",
+                                fontSize = 10.sp,
+                                color = palette.textMuted,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
             }
         }
 

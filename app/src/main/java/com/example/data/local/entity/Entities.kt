@@ -139,5 +139,6 @@ data class SettingsEntity(
     val defaultAspectRatio: String = "16:9",
     val showManagementCards: Boolean = true,
     val appIconStyle: Int = 0,
+    val transitionStyle: Int = 0,
     val lastSyncTime: Long = 0L
 )

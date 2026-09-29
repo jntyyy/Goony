@@ -56,8 +56,8 @@ fun StudioManagementScreen(
         when (sortOption) {
             ManagementSortOption.NAME_AZ -> studios.sortedBy { it.name.lowercase() }
             ManagementSortOption.NAME_ZA -> studios.sortedByDescending { it.name.lowercase() }
-            ManagementSortOption.MOST_SCENES -> studios.sortedByDescending { studio -> links.count { it.studioIds.contains(studio.id) } }
-            ManagementSortOption.LEAST_SCENES -> studios.sortedBy { studio -> links.count { it.studioIds.contains(studio.id) } }
+            ManagementSortOption.NEWEST -> studios.sortedByDescending { it.createdAt }
+            ManagementSortOption.OLDEST -> studios.sortedBy { it.createdAt }
         }
     }
 
@@ -89,7 +89,7 @@ fun StudioManagementScreen(
                             modifier = Modifier.background(palette.surface)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Name (A-Z)", color = if (sortOption == ManagementSortOption.NAME_AZ) accent else palette.textPrimary) },
+                                text = { Text("A - Z", color = if (sortOption == ManagementSortOption.NAME_AZ) accent else palette.textPrimary) },
                                 leadingIcon = {
                                     if (sortOption == ManagementSortOption.NAME_AZ) {
                                         Icon(Icons.Default.Check, contentDescription = null, tint = accent)
@@ -101,7 +101,7 @@ fun StudioManagementScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Name (Z-A)", color = if (sortOption == ManagementSortOption.NAME_ZA) accent else palette.textPrimary) },
+                                text = { Text("Z - A", color = if (sortOption == ManagementSortOption.NAME_ZA) accent else palette.textPrimary) },
                                 leadingIcon = {
                                     if (sortOption == ManagementSortOption.NAME_ZA) {
                                         Icon(Icons.Default.Check, contentDescription = null, tint = accent)
@@ -113,26 +113,26 @@ fun StudioManagementScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Most Scenes", color = if (sortOption == ManagementSortOption.MOST_SCENES) accent else palette.textPrimary) },
+                                text = { Text("New", color = if (sortOption == ManagementSortOption.NEWEST) accent else palette.textPrimary) },
                                 leadingIcon = {
-                                    if (sortOption == ManagementSortOption.MOST_SCENES) {
+                                    if (sortOption == ManagementSortOption.NEWEST) {
                                         Icon(Icons.Default.Check, contentDescription = null, tint = accent)
                                     }
                                 },
                                 onClick = {
-                                    sortOption = ManagementSortOption.MOST_SCENES
+                                    sortOption = ManagementSortOption.NEWEST
                                     showSortMenu = false
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Least Scenes", color = if (sortOption == ManagementSortOption.LEAST_SCENES) accent else palette.textPrimary) },
+                                text = { Text("Old", color = if (sortOption == ManagementSortOption.OLDEST) accent else palette.textPrimary) },
                                 leadingIcon = {
-                                    if (sortOption == ManagementSortOption.LEAST_SCENES) {
+                                    if (sortOption == ManagementSortOption.OLDEST) {
                                         Icon(Icons.Default.Check, contentDescription = null, tint = accent)
                                     }
                                 },
                                 onClick = {
-                                    sortOption = ManagementSortOption.LEAST_SCENES
+                                    sortOption = ManagementSortOption.OLDEST
                                     showSortMenu = false
                                 }
                             )

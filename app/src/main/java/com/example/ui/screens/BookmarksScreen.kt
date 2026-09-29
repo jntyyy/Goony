@@ -88,8 +88,10 @@ fun BookmarksScreen(
         }
 
         when (currentSort) {
-            SortMode.NEWEST -> searched.sortedByDescending { it.assignedDate ?: it.createdAt }
-            SortMode.OLDEST -> searched.sortedBy { it.assignedDate ?: it.createdAt }
+            SortMode.CARD_NEWEST, SortMode.NEWEST -> searched.sortedByDescending { it.assignedDate ?: it.createdAt }
+            SortMode.CARD_OLDEST, SortMode.OLDEST -> searched.sortedBy { it.assignedDate ?: it.createdAt }
+            SortMode.RECENTLY_ADDED -> searched.sortedByDescending { it.createdAt }
+            SortMode.OLDEST_ADDED -> searched.sortedBy { it.createdAt }
             SortMode.TITLE_AZ -> searched.sortedBy { it.title.lowercase() }
             SortMode.TITLE_ZA -> searched.sortedByDescending { it.title.lowercase() }
         }
@@ -187,7 +189,20 @@ fun BookmarksScreen(
                     }
                 },
                 actions = {
-                    if (!isSearchExpanded) {
+                    if (isSearchExpanded) {
+                        IconButton(
+                            onClick = {
+                                isSearchExpanded = false
+                                viewModel.searchQuery.value = ""
+                            },
+                            modifier = Modifier.testTag("close_search_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close Search"
+                            )
+                        }
+                    } else {
                         IconButton(
                             onClick = { isSearchExpanded = true },
                             modifier = Modifier.testTag("search_action_button")
@@ -218,60 +233,22 @@ fun BookmarksScreen(
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            "A-Z",
-                                            fontWeight = if (currentSort == SortMode.TITLE_AZ) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (currentSort == SortMode.TITLE_AZ) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = if (currentSort == SortMode.TITLE_AZ) MaterialTheme.colorScheme.primary else Color.Transparent
-                                        )
-                                    },
-                                    onClick = {
-                                        viewModel.sortMode.value = SortMode.TITLE_AZ
-                                        showSortMenu = false
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            "Z-A",
-                                            fontWeight = if (currentSort == SortMode.TITLE_ZA) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (currentSort == SortMode.TITLE_ZA) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = if (currentSort == SortMode.TITLE_ZA) MaterialTheme.colorScheme.primary else Color.Transparent
-                                        )
-                                    },
-                                    onClick = {
-                                        viewModel.sortMode.value = SortMode.TITLE_ZA
-                                        showSortMenu = false
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
                                             "New",
-                                            fontWeight = if (currentSort == SortMode.NEWEST) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (currentSort == SortMode.NEWEST) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (currentSort == SortMode.CARD_NEWEST || currentSort == SortMode.NEWEST) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (currentSort == SortMode.CARD_NEWEST || currentSort == SortMode.NEWEST) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                         )
                                     },
                                     leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = if (currentSort == SortMode.NEWEST) MaterialTheme.colorScheme.primary else Color.Transparent
-                                        )
+                                        if (currentSort == SortMode.CARD_NEWEST || currentSort == SortMode.NEWEST) {
+                                            Icon(
+                                                Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     },
                                     onClick = {
-                                        viewModel.sortMode.value = SortMode.NEWEST
+                                        viewModel.sortMode.value = SortMode.CARD_NEWEST
                                         showSortMenu = false
                                     }
                                 )
@@ -279,19 +256,65 @@ fun BookmarksScreen(
                                     text = {
                                         Text(
                                             "Old",
-                                            fontWeight = if (currentSort == SortMode.OLDEST) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (currentSort == SortMode.OLDEST) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                            fontWeight = if (currentSort == SortMode.CARD_OLDEST || currentSort == SortMode.OLDEST) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (currentSort == SortMode.CARD_OLDEST || currentSort == SortMode.OLDEST) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                         )
                                     },
                                     leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = if (currentSort == SortMode.OLDEST) MaterialTheme.colorScheme.primary else Color.Transparent
-                                        )
+                                        if (currentSort == SortMode.CARD_OLDEST || currentSort == SortMode.OLDEST) {
+                                            Icon(
+                                                Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     },
                                     onClick = {
-                                        viewModel.sortMode.value = SortMode.OLDEST
+                                        viewModel.sortMode.value = SortMode.CARD_OLDEST
+                                        showSortMenu = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "Recently Added",
+                                            fontWeight = if (currentSort == SortMode.RECENTLY_ADDED) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (currentSort == SortMode.RECENTLY_ADDED) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        if (currentSort == SortMode.RECENTLY_ADDED) {
+                                            Icon(
+                                                Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.sortMode.value = SortMode.RECENTLY_ADDED
+                                        showSortMenu = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "Oldest Added",
+                                            fontWeight = if (currentSort == SortMode.OLDEST_ADDED) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (currentSort == SortMode.OLDEST_ADDED) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        if (currentSort == SortMode.OLDEST_ADDED) {
+                                            Icon(
+                                                Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.sortMode.value = SortMode.OLDEST_ADDED
                                         showSortMenu = false
                                     }
                                 )
