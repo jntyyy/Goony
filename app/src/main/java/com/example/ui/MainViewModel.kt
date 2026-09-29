@@ -408,9 +408,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var stashSearchJob: kotlinx.coroutines.Job? = null
     private var stashScenesJob: kotlinx.coroutines.Job? = null
+    private var stashActorQuery = ""
+    private var stashStudioQuery = ""
+    private var cachedActorScenes = emptyList<StashScene>()
+    private var cachedStudioScenes = emptyList<StashScene>()
+    private var cachedActorTotalCount = 0
+    private var cachedStudioTotalCount = 0
+    private var cachedActorCurrentPage = 1
+    private var cachedStudioCurrentPage = 1
+    private var cachedActorCanLoadMore = false
+    private var cachedStudioCanLoadMore = false
 
     fun setStashSearchQuery(query: String) {
         _stashSearchQuery.value = query
+        if (_stashActiveType.value == StashSearchType.ACTORS) {
+            stashActorQuery = query
+        } else {
+            stashStudioQuery = query
+        }
     }
 
     fun setStashSearchExpanded(expanded: Boolean) {
@@ -419,15 +434,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setStashActiveType(type: StashSearchType, apiKey: String) {
         if (_stashActiveType.value == type) return
+
+        // 1. Cache current state before switching
+        if (_stashActiveType.value == StashSearchType.ACTORS) {
+            cachedActorScenes = _stashScenesList.value
+            cachedActorTotalCount = _stashTotalScenesCount.value
+            cachedActorCurrentPage = _stashCurrentPage.value
+            cachedActorCanLoadMore = _stashCanLoadMore.value
+        } else {
+            cachedStudioScenes = _stashScenesList.value
+            cachedStudioTotalCount = _stashTotalScenesCount.value
+            cachedStudioCurrentPage = _stashCurrentPage.value
+            cachedStudioCanLoadMore = _stashCanLoadMore.value
+        }
+
         _stashActiveType.value = type
-        _stashSelectedPerformer.value = null
-        _stashSelectedStudio.value = null
-        _stashScenesList.value = emptyList()
         _stashSearchError.value = null
-        _stashCurrentPage.value = 1
-        _stashCanLoadMore.value = false
-        if (_stashSearchQuery.value.trim().isNotBlank()) {
-            performStashSearch(apiKey, _stashSearchQuery.value.trim())
+
+        // 2. Restore cached query & scenes for newly selected tab (or empty if none yet)
+        if (type == StashSearchType.ACTORS) {
+            _stashSearchQuery.value = stashActorQuery
+            _stashScenesList.value = cachedActorScenes
+            _stashTotalScenesCount.value = cachedActorTotalCount
+            _stashCurrentPage.value = cachedActorCurrentPage
+            _stashCanLoadMore.value = cachedActorCanLoadMore
+        } else {
+            _stashSearchQuery.value = stashStudioQuery
+            _stashScenesList.value = cachedStudioScenes
+            _stashTotalScenesCount.value = cachedStudioTotalCount
+            _stashCurrentPage.value = cachedStudioCurrentPage
+            _stashCanLoadMore.value = cachedStudioCanLoadMore
         }
     }
 
@@ -443,6 +479,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun resetStashState() {
         stashSearchJob?.cancel()
         stashScenesJob?.cancel()
+        stashActorQuery = ""
+        stashStudioQuery = ""
+        cachedActorScenes = emptyList()
+        cachedStudioScenes = emptyList()
+        cachedActorTotalCount = 0
+        cachedStudioTotalCount = 0
+        cachedActorCurrentPage = 1
+        cachedStudioCurrentPage = 1
+        cachedActorCanLoadMore = false
+        cachedStudioCanLoadMore = false
         _stashSearchQuery.value = ""
         _isStashSearchExpanded.value = false
         _stashPerformerResults.value = emptyList()

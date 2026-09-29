@@ -5,12 +5,14 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -25,6 +27,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
 import com.example.data.local.entity.ActorEntity
 import com.example.data.local.entity.LinkEntity
 import com.example.data.local.entity.StudioEntity
@@ -40,6 +45,8 @@ import com.example.ui.MainViewModel
 import com.example.ui.ScreenState
 import com.example.ui.SortMode
 import com.example.ui.components.LinkCard
+import com.example.ui.theme.LocalBetaTestPrivacy
+import com.example.ui.theme.privacyImageBlur
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,29 +163,38 @@ fun HomeScreen(
                         LaunchedEffect(Unit) {
                             focusRequester.requestFocus()
                         }
-                        TextField(
+                        BasicTextField(
                             value = searchQuery,
                             onValueChange = { viewModel.searchQuery.value = it },
-                            placeholder = { Text("Search scenes, actors, studios...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                cursorColor = MaterialTheme.colorScheme.primary
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 15.sp
                             ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester)
                                 .testTag("search_scenes_input"),
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.searchQuery.value = "" }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "Search scenes, actors, studios...",
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                fontSize = 15.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
+                                    innerTextField()
                                 }
                             }
                         )
@@ -244,17 +260,30 @@ fun HomeScreen(
                 },
                 actions = {
                     if (isSearchExpanded) {
-                        IconButton(
-                            onClick = {
-                                isSearchExpanded = false
-                                viewModel.searchQuery.value = ""
-                            },
-                            modifier = Modifier.testTag("close_search_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close Search"
-                            )
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { viewModel.searchQuery.value = "" },
+                                modifier = Modifier.testTag("clear_search_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear Search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    isSearchExpanded = false
+                                    viewModel.searchQuery.value = ""
+                                },
+                                modifier = Modifier.testTag("close_search_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close Search"
+                                )
+                            }
                         }
                     } else {
                         // Native Search Action
@@ -576,6 +605,67 @@ fun HomeScreen(
                             .testTag("actor_image_static_input")
                     )
 
+                    val isBetaTest = LocalBetaTestPrivacy.current
+
+                    // Circular Preview Section
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
+                        ) {
+                            if (!targetActor.imageUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = targetActor.imageUrl,
+                                    contentDescription = "Preview",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .privacyImageBlur(isBetaTest)
+                                )
+                                if (isBetaTest) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.75f))
+                                    )
+                                }
+                            } else {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Preview",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (!targetActor.imageUrl.isNullOrBlank()) "Actor photo preview" else "No image set",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
                     // Delete Actor and Linked Scenes Section (Circular Button)
                     if (!confirmDeleteActor) {
                         Button(
@@ -597,7 +687,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Delete Actors / Studio Scene",
+                                "Delete Actor Scene",
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -712,6 +802,67 @@ fun HomeScreen(
                             .testTag("studio_image_static_input")
                     )
 
+                    val isBetaTestStudio = LocalBetaTestPrivacy.current
+
+                    // Circular Preview Section
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
+                        ) {
+                            if (!targetStudio.logoUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = targetStudio.logoUrl,
+                                    contentDescription = "Preview",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .privacyImageBlur(isBetaTestStudio)
+                                )
+                                if (isBetaTestStudio) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.75f))
+                                    )
+                                }
+                            } else {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Icon(
+                                        imageVector = Icons.Default.MovieCreation,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Preview",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (!targetStudio.logoUrl.isNullOrBlank()) "Studio logo preview" else "No logo set",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
                     // Delete Studio and Linked Scenes Section (Circular Button)
                     if (!confirmDeleteStudio) {
                         Button(
@@ -733,7 +884,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Delete Actors / Studio Scene",
+                                "Delete Studio Scene",
                                 fontWeight = FontWeight.SemiBold
                             )
                         }

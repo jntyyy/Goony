@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -80,7 +81,9 @@ import com.example.network.StashStudio
 import com.example.ui.MainViewModel
 import com.example.ui.ScreenState
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalBetaTestPrivacy
 import com.example.ui.theme.LocalVaultPalette
+import com.example.ui.theme.privacyImageBlur
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -233,25 +236,15 @@ fun StashDbScreen(
                         LaunchedEffect(Unit) {
                             focusRequester.requestFocus()
                         }
-                        TextField(
+                        BasicTextField(
                             value = searchQuery,
                             onValueChange = { viewModel.setStashSearchQuery(it) },
-                            placeholder = {
-                                Text(
-                                    text = if (activeType == StashSearchType.ACTORS) "Search female actors..." else "Search studios globally...",
-                                    color = palette.textMuted
-                                )
-                            },
                             singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                cursorColor = accent,
-                                focusedTextColor = palette.textPrimary,
-                                unfocusedTextColor = palette.textPrimary
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = palette.textPrimary,
+                                fontSize = 15.sp
                             ),
+                            cursorBrush = SolidColor(accent),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(
                                 onSearch = {
@@ -263,21 +256,23 @@ fun StashDbScreen(
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester)
                                 .testTag("stashdb_header_search_input"),
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = {
-                                        focusManager.clearFocus()
-                                        if (searchQuery.trim().isNotBlank()) {
-                                            viewModel.performStashSearch(settings.stashDbApiKey, searchQuery)
-                                        }
-                                    },
-                                    modifier = Modifier.testTag("stashdb_header_search_submit")
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.CenterStart
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Search,
-                                        contentDescription = "Search",
-                                        tint = if (searchQuery.isNotBlank()) accent else palette.textMuted
-                                    )
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = if (activeType == StashSearchType.ACTORS) "Search female actors..." else "Search studios...",
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                fontSize = 15.sp,
+                                                color = palette.textMuted
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    innerTextField()
                                 }
                             }
                         )
@@ -339,6 +334,19 @@ fun StashDbScreen(
                     // 2. Search expanded / collapsed action controls
                     if (isSearchExpanded) {
                         if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    viewModel.performStashSearch(settings.stashDbApiKey, searchQuery)
+                                },
+                                modifier = Modifier.testTag("stashdb_header_search_submit")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = accent
+                                )
+                            }
                             IconButton(
                                 onClick = { viewModel.setStashSearchQuery("") },
                                 modifier = Modifier.testTag("clear_search_text_button")
@@ -760,6 +768,8 @@ fun HorizontalActorCircleItem(
         label = "actor_circle_scale"
     )
 
+    val isBetaTest = LocalBetaTestPrivacy.current
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -795,8 +805,17 @@ fun HorizontalActorCircleItem(
                     model = performer.imageUrl,
                     contentDescription = performer.name,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .privacyImageBlur(isBetaTest)
                 )
+                if (isBetaTest) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.75f))
+                    )
+                }
             } else {
                 Icon(
                     imageVector = Icons.Default.Person,
@@ -863,6 +882,8 @@ fun HorizontalStudioCircleItem(
     // Dark AMOLED background specifically designed for transparent Studio PNG logos
     val studioAmoledBg = Color(0xFF0F0F12)
 
+    val isBetaTest = LocalBetaTestPrivacy.current
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -904,7 +925,15 @@ fun HorizontalStudioCircleItem(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(8.dp)
+                            .privacyImageBlur(isBetaTest)
                     )
+                    if (isBetaTest) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.75f))
+                        )
+                    }
                 } else {
                     StudioFallbackEmblem(name = studio.name, accentColor = accent)
                 }
@@ -985,6 +1014,8 @@ fun StashGridPhotoCard(
         label = "card_select_progress"
     )
 
+    val isBetaTest = LocalBetaTestPrivacy.current
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1028,7 +1059,9 @@ fun StashGridPhotoCard(
                         contentDescription = scene.title,
                         contentScale = ContentScale.Crop,
                         colorFilter = if (isAlreadySaved) grayscaleFilter else null,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .privacyImageBlur(isBetaTest)
                     )
                 } else {
                     Icon(
@@ -1036,6 +1069,14 @@ fun StashGridPhotoCard(
                         contentDescription = null,
                         tint = palette.textMuted,
                         modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                if (isBetaTest && !scene.coverUrl.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.75f))
                     )
                 }
 

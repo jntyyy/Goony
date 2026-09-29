@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalBetaTestPrivacy
+import com.example.ui.theme.privacyImageBlur
 
 @Composable
 fun PhotosetLightbox(
@@ -37,6 +39,7 @@ fun PhotosetLightbox(
     title: String = "Photoset",
     onClose: () -> Unit
 ) {
+    val isBetaTest = LocalBetaTestPrivacy.current
     if (images.isEmpty()) {
         onClose()
         return
@@ -84,6 +87,7 @@ fun PhotosetLightbox(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
+                    .privacyImageBlur(isBetaTest)
                     .graphicsLayer(
                         scaleX = scale,
                         scaleY = scale,
@@ -91,6 +95,13 @@ fun PhotosetLightbox(
                         translationY = offsetY
                     )
             )
+            if (isBetaTest) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.75f))
+                )
+            }
         }
 
         // Top bar (Title, Counter, Reset Zoom, Close)

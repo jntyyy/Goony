@@ -33,7 +33,9 @@ import com.example.ui.components.SmoothProgressIndicator
 import com.example.ui.MainViewModel
 import com.example.ui.ScreenState
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalBetaTestPrivacy
 import com.example.ui.theme.LocalVaultPalette
+import com.example.ui.theme.privacyImageBlur
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -120,12 +122,22 @@ fun HanimeManagementScreen(
                                     .background(palette.skeletonBg)
                             ) {
                                 if (series.coverImage.isNotEmpty()) {
+                                    val isBetaTest = LocalBetaTestPrivacy.current
                                     AsyncImage(
                                         model = series.coverImage,
                                         contentDescription = series.title,
                                         contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .privacyImageBlur(isBetaTest)
                                     )
+                                    if (isBetaTest) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color.Black.copy(alpha = 0.75f))
+                                        )
+                                    }
                                 }
 
                                 // Censorship badge
@@ -315,15 +327,28 @@ fun HanimeDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         if (series.coverImage.isNotEmpty()) {
-                            AsyncImage(
-                                model = series.coverImage,
-                                contentDescription = series.title,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .width(110.dp)
-                                    .height(160.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                            )
+                            val isBetaTest = LocalBetaTestPrivacy.current
+                            Box {
+                                AsyncImage(
+                                    model = series.coverImage,
+                                    contentDescription = series.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .width(110.dp)
+                                        .height(160.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .privacyImageBlur(isBetaTest)
+                                )
+                                if (isBetaTest) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(110.dp)
+                                            .height(160.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.Black.copy(alpha = 0.75f))
+                                    )
+                                }
+                            }
                         }
 
                         Column(modifier = Modifier.weight(1f)) {

@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 private enum class SettingsSection {
     MAIN_MENU,
     DISPLAY,
+    PRIVACY,
     INTEGRATIONS,
     DATA_BACKUP,
     SAMPLE_DATA
@@ -74,6 +75,7 @@ fun SettingsScreen(
     val initialSection = remember {
         val sec = when (viewModel.initialSettingsSection) {
             "DISPLAY" -> SettingsSection.DISPLAY
+            "PRIVACY" -> SettingsSection.PRIVACY
             "INTEGRATIONS" -> SettingsSection.INTEGRATIONS
             "DATA_BACKUP" -> SettingsSection.DATA_BACKUP
             "SAMPLE_DATA" -> SettingsSection.SAMPLE_DATA
@@ -92,6 +94,7 @@ fun SettingsScreen(
     val screenTitle = when (currentSection) {
         SettingsSection.MAIN_MENU -> "Settings"
         SettingsSection.DISPLAY -> "Display"
+        SettingsSection.PRIVACY -> "Privacy"
         SettingsSection.INTEGRATIONS -> "Integrations"
         SettingsSection.DATA_BACKUP -> "Data & Backup"
         SettingsSection.SAMPLE_DATA -> "Sample Data"
@@ -169,6 +172,7 @@ fun SettingsScreen(
                             .verticalScroll(rememberScrollState()),
                         themeName = themeName,
                         rdKeyConfigured = rdKey.isNotBlank() || torboxKey.isNotBlank(),
+                        betaTestActive = currentSettings.betaTestPrivacy,
                         onNavigateTo = { currentSection = it }
                     )
                 }
@@ -200,6 +204,19 @@ fun SettingsScreen(
                         transitionStyle = currentSettings.transitionStyle,
                         onTransitionStyleChange = {
                             viewModel.updateSettings(currentSettings.copy(transitionStyle = it))
+                        }
+                    )
+                }
+                SettingsSection.PRIVACY -> {
+                    SettingsPrivacySection(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = padding.calculateTopPadding())
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        betaTestPrivacy = currentSettings.betaTestPrivacy,
+                        onBetaTestPrivacyChange = {
+                            viewModel.updateSettings(currentSettings.copy(betaTestPrivacy = it))
                         }
                     )
                 }
@@ -398,6 +415,7 @@ private fun SettingsMainMenu(
     modifier: Modifier = Modifier,
     themeName: String,
     rdKeyConfigured: Boolean,
+    betaTestActive: Boolean,
     onNavigateTo: (SettingsSection) -> Unit
 ) {
     Column(modifier = modifier) {
@@ -407,6 +425,15 @@ private fun SettingsMainMenu(
             title = "Display",
             summary = "Theme ($themeName), Color Palette",
             onClick = { onNavigateTo(SettingsSection.DISPLAY) }
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+        SettingsPreferenceItem(
+            icon = Icons.Outlined.Security,
+            title = "Privacy",
+            summary = if (betaTestActive) "Beta Test (Active - Content Blurred)" else "Beta Test image privacy controls",
+            onClick = { onNavigateTo(SettingsSection.PRIVACY) }
         )
 
         HorizontalDivider(modifier = Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -435,6 +462,124 @@ private fun SettingsMainMenu(
             summary = "Load or clean removable demo data",
             onClick = { onNavigateTo(SettingsSection.SAMPLE_DATA) }
         )
+    }
+}
+
+@Composable
+private fun SettingsPrivacySection(
+    modifier: Modifier = Modifier,
+    betaTestPrivacy: Boolean,
+    onBetaTestPrivacyChange: (Boolean) -> Unit
+) {
+    val palette = LocalVaultPalette.current
+    val accent = LocalAccentColor.current
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = accent.copy(alpha = 0.15f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.Security,
+                                contentDescription = null,
+                                tint = accent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Privacy Controls",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Manage media visibility and privacy filters",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = palette.border.copy(alpha = 0.5f))
+
+                // Beta Test Option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { onBetaTestPrivacyChange(!betaTestPrivacy) }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Beta Test",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = accent.copy(alpha = 0.18f)
+                            ) {
+                                Text(
+                                    text = "BETA",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = accent,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Loads all media seamlessly in the app while applying a smart privacy blur to obscure image content across all screens.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 18.sp
+                        )
+                    }
+
+                    Switch(
+                        checked = betaTestPrivacy,
+                        onCheckedChange = onBetaTestPrivacyChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = accent,
+                            uncheckedThumbColor = palette.textMuted,
+                            uncheckedTrackColor = palette.surface
+                        ),
+                        modifier = Modifier.testTag("beta_test_privacy_switch")
+                    )
+                }
+            }
+        }
     }
 }
 

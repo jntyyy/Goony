@@ -30,7 +30,9 @@ import com.example.data.local.entity.StudioEntity
 import com.example.ui.MainViewModel
 import com.example.ui.ScreenState
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalBetaTestPrivacy
 import com.example.ui.theme.LocalVaultPalette
+import com.example.ui.theme.privacyImageBlur
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -184,6 +186,8 @@ fun StudioManagementScreen(
                                 .padding(8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            val isBetaTest = LocalBetaTestPrivacy.current
+
                             if (!studio.logoUrl.isNullOrEmpty()) {
                                 AsyncImage(
                                     model = studio.logoUrl,
@@ -193,7 +197,16 @@ fun StudioManagementScreen(
                                         .size(70.dp)
                                         .clip(CircleShape)
                                         .border(2.dp, if (showCards) Color.White else accent.copy(alpha = 0.5f), CircleShape)
+                                        .privacyImageBlur(isBetaTest)
                                 )
+                                if (isBetaTest) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(70.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.75f))
+                                    )
+                                }
                             } else {
                                 Box(
                                     modifier = Modifier
@@ -284,6 +297,56 @@ fun StudioManagementScreen(
                         shape = RoundedCornerShape(32.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    // Live Circular Preview Section
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = palette.surface,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier
+                                .size(54.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, accent.copy(alpha = 0.6f), CircleShape)
+                        ) {
+                            if (logoUrl.trim().isNotEmpty()) {
+                                AsyncImage(
+                                    model = logoUrl.trim(),
+                                    contentDescription = "Preview",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Icon(
+                                        imageVector = Icons.Default.MovieCreation,
+                                        contentDescription = null,
+                                        tint = palette.textMuted,
+                                        modifier = Modifier.size(30.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Preview",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = palette.textPrimary
+                            )
+                            Text(
+                                text = if (logoUrl.trim().isNotEmpty()) "Live studio logo preview" else "No logo URL",
+                                fontSize = 11.5.sp,
+                                color = palette.textMuted
+                            )
+                        }
+                    }
                 }
             },
             confirmButton = {

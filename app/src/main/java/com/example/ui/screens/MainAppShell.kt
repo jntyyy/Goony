@@ -79,7 +79,8 @@ fun MainAppShell(viewModel: MainViewModel) {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = false,
+        gesturesEnabled = true,
+        scrimColor = Color.Black.copy(alpha = 0.5f),
         drawerContent = {
             ModalDrawerSheet(
                 drawerContainerColor = palette.surface,

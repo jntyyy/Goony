@@ -58,7 +58,9 @@ import com.example.data.local.entity.LinkEntity
 import com.example.data.local.entity.StudioEntity
 import com.example.ui.ActiveInlineVideoPlayback
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalBetaTestPrivacy
 import com.example.ui.theme.LocalVaultPalette
+import com.example.ui.theme.privacyImageBlur
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
@@ -344,6 +346,8 @@ fun LinkCard(
                     )
                 }
 
+                val isBetaTest = LocalBetaTestPrivacy.current
+
                 if (link.coverImage.isNotEmpty()) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
@@ -357,12 +361,20 @@ fun LinkCard(
                         onError = { isImageLoaded = true },
                         modifier = Modifier
                             .fillMaxSize()
+                            .privacyImageBlur(isBetaTest)
                             .graphicsLayer {
                                 alpha = coverAlpha
                                 scaleX = coverScale
                                 scaleY = coverScale
                             }
                     )
+                    if (isBetaTest) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.72f))
+                        )
+                    }
                 } else {
                     Box(
                         modifier = Modifier.fillMaxSize(),

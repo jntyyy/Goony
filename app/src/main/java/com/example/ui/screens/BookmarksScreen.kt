@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -124,30 +126,38 @@ fun BookmarksScreen(
                         LaunchedEffect(Unit) {
                             focusRequester.requestFocus()
                         }
-                        TextField(
+                        BasicTextField(
                             value = searchQuery,
                             onValueChange = { viewModel.searchQuery.value = it },
-                            placeholder = { Text("Search bookmarks...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                             singleLine = true,
-                            maxLines = 1,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                cursorColor = MaterialTheme.colorScheme.primary
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 15.sp
                             ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester)
                                 .testTag("search_bookmarks_input"),
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.searchQuery.value = "" }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "Search bookmarks...",
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                fontSize = 15.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
+                                    innerTextField()
                                 }
                             }
                         )
@@ -178,29 +188,42 @@ fun BookmarksScreen(
                         }
                     } else {
                         IconButton(
-                            onClick = onOpenDrawer,
-                            modifier = Modifier.testTag("open_drawer_button")
+                            onClick = { viewModel.navigateBack() },
+                            modifier = Modifier.testTag("back_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Open Drawer"
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
                             )
                         }
                     }
                 },
                 actions = {
                     if (isSearchExpanded) {
-                        IconButton(
-                            onClick = {
-                                isSearchExpanded = false
-                                viewModel.searchQuery.value = ""
-                            },
-                            modifier = Modifier.testTag("close_search_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close Search"
-                            )
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { viewModel.searchQuery.value = "" },
+                                modifier = Modifier.testTag("clear_search_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear Search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    isSearchExpanded = false
+                                    viewModel.searchQuery.value = ""
+                                },
+                                modifier = Modifier.testTag("close_search_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close Search"
+                                )
+                            }
                         }
                     } else {
                         IconButton(

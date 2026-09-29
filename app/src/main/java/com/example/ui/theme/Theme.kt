@@ -10,11 +10,25 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 val LocalVaultPalette = compositionLocalOf<VaultThemePalette> { VaultThemePalette.Dark }
 val LocalAccentColor = compositionLocalOf { Color(0xFF7C4DFF) }
+val LocalBetaTestPrivacy = compositionLocalOf { false }
+
+fun Modifier.privacyImageBlur(enabled: Boolean, radius: Dp = 80.dp): Modifier {
+    return if (enabled) {
+        this.blur(radius = radius, edgeTreatment = BlurredEdgeTreatment.Rectangle)
+    } else {
+        this
+    }
+}
 
 fun parseHexColor(hex: String, fallback: Color = Color(0xFF7C4DFF)): Color {
     return try {
@@ -36,6 +50,7 @@ fun parseHexColor(hex: String, fallback: Color = Color(0xFF7C4DFF)): Color {
 fun GVJVaultTheme(
     paletteName: String = "Dark",
     accentColorHex: String = MaterialYouColorPresets.SYSTEM_DYNAMIC_ID,
+    betaTestPrivacy: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -125,7 +140,8 @@ fun GVJVaultTheme(
 
     CompositionLocalProvider(
         LocalVaultPalette provides animatedPalette,
-        LocalAccentColor provides activeAccent
+        LocalAccentColor provides activeAccent,
+        LocalBetaTestPrivacy provides betaTestPrivacy
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

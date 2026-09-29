@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -30,7 +31,9 @@ import com.example.data.local.entity.ActorEntity
 import com.example.ui.MainViewModel
 import com.example.ui.ScreenState
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalBetaTestPrivacy
 import com.example.ui.theme.LocalVaultPalette
+import com.example.ui.theme.privacyImageBlur
 import java.util.UUID
 
 enum class ManagementSortOption {
@@ -191,26 +194,53 @@ fun ActorManagementScreen(
                                 .padding(8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            if (actor.imageUrl.isNotEmpty()) {
-                                AsyncImage(
-                                    model = actor.imageUrl,
-                                    contentDescription = actor.name,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(70.dp)
-                                        .clip(CircleShape)
-                                        .border(2.dp, if (showCards) Color.White else accent.copy(alpha = 0.5f), CircleShape)
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(70.dp)
-                                        .clip(CircleShape)
-                                        .background(palette.surface)
-                                        .border(2.dp, if (showCards) Color.White else accent.copy(alpha = 0.5f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Default.AccountCircle, contentDescription = null, tint = palette.textMuted, modifier = Modifier.size(42.dp))
+                            val isBetaTest = LocalBetaTestPrivacy.current
+
+                            Surface(
+                                shape = CircleShape,
+                                color = palette.surface,
+                                shadowElevation = 3.dp,
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, if (showCards) Color.White else accent.copy(alpha = 0.6f), CircleShape)
+                            ) {
+                                if (actor.imageUrl.isNotEmpty()) {
+                                    AsyncImage(
+                                        model = actor.imageUrl,
+                                        contentDescription = actor.name,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .privacyImageBlur(isBetaTest)
+                                    )
+                                    if (isBetaTest) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color.Black.copy(alpha = 0.75f))
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    listOf(accent.copy(alpha = 0.25f), palette.cardBg)
+                                                )
+                                            ),
+                                        contentAlignment = Alignment.BottomCenter
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = palette.textSecondary.copy(alpha = 0.9f),
+                                            modifier = Modifier
+                                                .fillMaxSize(0.85f)
+                                                .padding(bottom = 2.dp)
+                                        )
+                                    }
                                 }
                             }
 
@@ -291,6 +321,56 @@ fun ActorManagementScreen(
                         shape = RoundedCornerShape(32.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    // Live Circular Preview Section
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = palette.surface,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier
+                                .size(54.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, accent.copy(alpha = 0.6f), CircleShape)
+                        ) {
+                            if (imageUrl.trim().isNotEmpty()) {
+                                AsyncImage(
+                                    model = imageUrl.trim(),
+                                    contentDescription = "Preview",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = palette.textMuted,
+                                        modifier = Modifier.size(30.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Preview",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = palette.textPrimary
+                            )
+                            Text(
+                                text = if (imageUrl.trim().isNotEmpty()) "Live actor photo preview" else "No image URL",
+                                fontSize = 11.5.sp,
+                                color = palette.textMuted
+                            )
+                        }
+                    }
                 }
             },
             confirmButton = {

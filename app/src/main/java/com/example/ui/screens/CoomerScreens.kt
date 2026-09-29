@@ -36,7 +36,9 @@ import com.example.ui.ScreenState
 import com.example.ui.components.SmoothProgressIndicator
 import com.example.ui.components.StaggeredEntranceItem
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalBetaTestPrivacy
 import com.example.ui.theme.LocalVaultPalette
+import com.example.ui.theme.privacyImageBlur
 import com.example.ui.theme.rememberDominantColor
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.ui.graphics.Brush
@@ -126,15 +128,27 @@ fun CoomerManagementScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 if (creator.imageUrl.isNotEmpty()) {
-                                    AsyncImage(
-                                        model = creator.imageUrl,
-                                        contentDescription = creator.name,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(80.dp)
-                                            .clip(CircleShape)
-                                            .border(2.dp, accent, CircleShape)
-                                    )
+                                    val isBetaTest = LocalBetaTestPrivacy.current
+                                    Box {
+                                        AsyncImage(
+                                            model = creator.imageUrl,
+                                            contentDescription = creator.name,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(80.dp)
+                                                .clip(CircleShape)
+                                                .border(2.dp, accent, CircleShape)
+                                                .privacyImageBlur(isBetaTest)
+                                        )
+                                        if (isBetaTest) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(80.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color.Black.copy(alpha = 0.75f))
+                                            )
+                                        }
+                                    }
                                 } else {
                                     Box(
                                         modifier = Modifier
@@ -369,12 +383,22 @@ fun CoomerDetailScreen(
                                         }
                                     }
                             ) {
+                                val isBetaTest = LocalBetaTestPrivacy.current
                                 AsyncImage(
                                     model = mediaUrl,
                                     contentDescription = "Post Media",
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .privacyImageBlur(isBetaTest)
                                 )
+                                if (isBetaTest) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.75f))
+                                    )
+                                }
 
                                 if (isVideo) {
                                     Box(
