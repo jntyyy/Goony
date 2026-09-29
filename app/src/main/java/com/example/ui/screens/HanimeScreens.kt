@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.data.local.entity.HanimeEntity
 import com.example.network.MediaScrapers
+import com.example.ui.components.SmoothProgressIndicator
 import com.example.ui.MainViewModel
 import com.example.ui.ScreenState
 import com.example.ui.theme.LocalAccentColor
@@ -237,7 +238,7 @@ fun HanimeManagementScreen(
                     enabled = !isScraping && (hstreamUrl.isNotBlank() || manualTitle.isNotBlank())
                 ) {
                     if (isScraping) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                        SmoothProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
                     } else {
                         Text("Add")
                     }

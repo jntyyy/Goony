@@ -33,6 +33,7 @@ import com.example.data.local.entity.CoomerEntity
 import com.example.network.MediaScrapers
 import com.example.ui.MainViewModel
 import com.example.ui.ScreenState
+import com.example.ui.components.SmoothProgressIndicator
 import com.example.ui.components.StaggeredEntranceItem
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalVaultPalette
@@ -246,7 +247,7 @@ fun CoomerManagementScreen(
                     enabled = !isScraping && (profileUrl.isNotBlank() || manualName.isNotBlank())
                 ) {
                     if (isScraping) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                        SmoothProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
                     } else {
                         Text("Add")
                     }

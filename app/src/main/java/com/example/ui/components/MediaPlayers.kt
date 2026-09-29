@@ -746,7 +746,7 @@ fun ExoPlayerOverlay(
                     .background(Color.Black.copy(alpha = 0.25f)),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
+                SmoothProgressIndicator(
                     modifier = Modifier.size(54.dp),
                     color = LocalAccentColor.current,
                     strokeWidth = 4.dp
@@ -1825,7 +1825,7 @@ fun InlineCardPlayer(
                     .background(Color.Black.copy(alpha = 0.25f)),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
+                SmoothProgressIndicator(
                     modifier = Modifier.size(44.dp),
                     color = LocalAccentColor.current,
                     strokeWidth = 3.5.dp

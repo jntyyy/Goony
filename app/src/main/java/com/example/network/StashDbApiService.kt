@@ -31,6 +31,7 @@ data class StashScene(
     val title: String,
     val details: String? = null,
     val date: String? = null,
+    val studioId: String? = null,
     val studioName: String? = null,
     val studioLogo: String? = null,
     val coverUrl: String? = null,
@@ -45,6 +46,28 @@ data class StashSceneQueryResult(
 object StashDbApiService {
     private const val GRAPHQL_ENDPOINT = "https://stashdb.org/graphql"
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+
+    fun parseDateToMillis(dateStr: String?): Long? {
+        if (dateStr.isNullOrBlank()) return null
+        val clean = dateStr.trim()
+        val formats = listOf(
+            "yyyy-MM-dd",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ssXXX",
+            "yyyy-MM",
+            "yyyy"
+        )
+        for (fmt in formats) {
+            try {
+                val sdf = java.text.SimpleDateFormat(fmt, java.util.Locale.US)
+                sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                val parsed = sdf.parse(clean)
+                if (parsed != null) return parsed.time
+            } catch (_: Exception) {}
+        }
+        return null
+    }
 
     private fun extractDomain(urlStr: String): String? {
         return try {
@@ -445,6 +468,9 @@ object StashDbApiService {
                     id
                     child_studios {
                       id
+                      child_studios {
+                        id
+                      }
                     }
                   }
                 }
@@ -475,10 +501,19 @@ object StashDbApiService {
             val childArray = studioObj.optJSONArray("child_studios")
             if (childArray != null) {
                 for (i in 0 until childArray.length()) {
-                    val childItem = childArray.optJSONObject(i)
-                    val cId = childItem?.optString("id")
+                    val childItem = childArray.optJSONObject(i) ?: continue
+                    val cId = childItem.optString("id")
                     if (!cId.isNullOrBlank()) {
                         idsList.add(cId)
+                    }
+                    val subChildArray = childItem.optJSONArray("child_studios")
+                    if (subChildArray != null) {
+                        for (j in 0 until subChildArray.length()) {
+                            val subChild = subChildArray.optJSONObject(j)?.optString("id")
+                            if (!subChild.isNullOrBlank()) {
+                                idsList.add(subChild)
+                            }
+                        }
                     }
                 }
             }
@@ -624,6 +659,7 @@ object StashDbApiService {
             } else null
 
             val studioObj = item.optJSONObject("studio")
+            val studioId = studioObj?.optString("id")?.ifBlank { null }
             val studioName = studioObj?.optString("name")?.ifBlank { null }
             val studioLogo = extractStudioLogo(studioObj)
 
@@ -667,6 +703,7 @@ object StashDbApiService {
                     title = title,
                     details = details,
                     date = date,
+                    studioId = studioId,
                     studioName = studioName,
                     studioLogo = studioLogo,
                     coverUrl = coverUrl,

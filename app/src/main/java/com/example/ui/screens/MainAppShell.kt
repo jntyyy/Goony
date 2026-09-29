@@ -32,6 +32,7 @@ import com.example.ui.ScreenState
 import com.example.ui.components.ExoPlayerOverlay
 import com.example.ui.components.GoPlayer
 import com.example.ui.components.PhotosetLightbox
+import com.example.ui.components.SmoothProgressIndicator
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalVaultPalette
 import kotlinx.coroutines.launch
@@ -472,7 +473,7 @@ fun MainAppShell(viewModel: MainViewModel) {
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                CircularProgressIndicator(
+                                SmoothProgressIndicator(
                                     modifier = Modifier.size(44.dp),
                                     color = accent,
                                     strokeWidth = 3.5.dp

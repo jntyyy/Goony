@@ -11,6 +11,7 @@ import com.example.network.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -30,6 +31,11 @@ enum class SortMode {
     OLDEST,           // Backward compatibility (maps to CARD_OLDEST)
     TITLE_AZ,
     TITLE_ZA
+}
+
+enum class StashSearchType {
+    ACTORS,
+    STUDIO
 }
 
 sealed class ScreenState {
@@ -347,6 +353,414 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeLightbox() {
         _activeLightbox.value = null
+    }
+
+    // ==========================================
+    // STASHDB PERSISTENT STATE & OPERATIONS
+    // ==========================================
+    private val _stashSearchQuery = MutableStateFlow("")
+    val stashSearchQuery: StateFlow<String> = _stashSearchQuery.asStateFlow()
+
+    private val _stashActiveType = MutableStateFlow(StashSearchType.ACTORS)
+    val stashActiveType: StateFlow<StashSearchType> = _stashActiveType.asStateFlow()
+
+    private val _stashPerformerResults = MutableStateFlow<List<StashPerformer>>(emptyList())
+    val stashPerformerResults: StateFlow<List<StashPerformer>> = _stashPerformerResults.asStateFlow()
+
+    private val _stashStudioResults = MutableStateFlow<List<StashStudio>>(emptyList())
+    val stashStudioResults: StateFlow<List<StashStudio>> = _stashStudioResults.asStateFlow()
+
+    private val _stashScenesList = MutableStateFlow<List<StashScene>>(emptyList())
+    val stashScenesList: StateFlow<List<StashScene>> = _stashScenesList.asStateFlow()
+
+    private val _stashSelectedPerformer = MutableStateFlow<StashPerformer?>(null)
+    val stashSelectedPerformer: StateFlow<StashPerformer?> = _stashSelectedPerformer.asStateFlow()
+
+    private val _stashSelectedStudio = MutableStateFlow<StashStudio?>(null)
+    val stashSelectedStudio: StateFlow<StashStudio?> = _stashSelectedStudio.asStateFlow()
+
+    private val _stashSelectedSceneIds = MutableStateFlow<Set<String>>(emptySet())
+    val stashSelectedSceneIds: StateFlow<Set<String>> = _stashSelectedSceneIds.asStateFlow()
+
+    private val _stashTotalScenesCount = MutableStateFlow(0)
+    val stashTotalScenesCount: StateFlow<Int> = _stashTotalScenesCount.asStateFlow()
+
+    private val _stashCurrentPage = MutableStateFlow(1)
+    val stashCurrentPage: StateFlow<Int> = _stashCurrentPage.asStateFlow()
+
+    private val _stashCanLoadMore = MutableStateFlow(false)
+    val stashCanLoadMore: StateFlow<Boolean> = _stashCanLoadMore.asStateFlow()
+
+    private val _isStashLoadingEntities = MutableStateFlow(false)
+    val isStashLoadingEntities: StateFlow<Boolean> = _isStashLoadingEntities.asStateFlow()
+
+    private val _isStashLoadingScenes = MutableStateFlow(false)
+    val isStashLoadingScenes: StateFlow<Boolean> = _isStashLoadingScenes.asStateFlow()
+
+    private val _isStashLoadingMore = MutableStateFlow(false)
+    val isStashLoadingMore: StateFlow<Boolean> = _isStashLoadingMore.asStateFlow()
+
+    private val _stashSearchError = MutableStateFlow<String?>(null)
+    val stashSearchError: StateFlow<String?> = _stashSearchError.asStateFlow()
+
+    private val _isStashSearchExpanded = MutableStateFlow(false)
+    val isStashSearchExpanded: StateFlow<Boolean> = _isStashSearchExpanded.asStateFlow()
+
+    private var stashSearchJob: kotlinx.coroutines.Job? = null
+    private var stashScenesJob: kotlinx.coroutines.Job? = null
+
+    fun setStashSearchQuery(query: String) {
+        _stashSearchQuery.value = query
+    }
+
+    fun setStashSearchExpanded(expanded: Boolean) {
+        _isStashSearchExpanded.value = expanded
+    }
+
+    fun setStashActiveType(type: StashSearchType, apiKey: String) {
+        if (_stashActiveType.value == type) return
+        _stashActiveType.value = type
+        _stashSelectedPerformer.value = null
+        _stashSelectedStudio.value = null
+        _stashScenesList.value = emptyList()
+        _stashSearchError.value = null
+        _stashCurrentPage.value = 1
+        _stashCanLoadMore.value = false
+        if (_stashSearchQuery.value.trim().isNotBlank()) {
+            performStashSearch(apiKey, _stashSearchQuery.value.trim())
+        }
+    }
+
+    fun toggleStashSceneSelection(sceneId: String) {
+        val current = _stashSelectedSceneIds.value
+        _stashSelectedSceneIds.value = if (current.contains(sceneId)) current - sceneId else current + sceneId
+    }
+
+    fun clearStashSelection() {
+        _stashSelectedSceneIds.value = emptySet()
+    }
+
+    fun resetStashState() {
+        stashSearchJob?.cancel()
+        stashScenesJob?.cancel()
+        _stashSearchQuery.value = ""
+        _isStashSearchExpanded.value = false
+        _stashPerformerResults.value = emptyList()
+        _stashStudioResults.value = emptyList()
+        _stashScenesList.value = emptyList()
+        _stashSelectedPerformer.value = null
+        _stashSelectedStudio.value = null
+        _stashSelectedSceneIds.value = emptySet()
+        _stashSearchError.value = null
+        _stashCurrentPage.value = 1
+        _stashCanLoadMore.value = false
+        _isStashLoadingEntities.value = false
+        _isStashLoadingScenes.value = false
+        _isStashLoadingMore.value = false
+    }
+
+    fun performStashSearch(apiKey: String, query: String? = null) {
+        val q = (query ?: _stashSearchQuery.value).trim()
+        if (q.isBlank()) return
+
+        stashSearchJob?.cancel()
+        stashSearchJob = viewModelScope.launch(Dispatchers.IO) {
+            _isStashLoadingEntities.value = true
+            _stashSearchError.value = null
+            _stashSelectedPerformer.value = null
+            _stashSelectedStudio.value = null
+            _stashScenesList.value = emptyList()
+            _stashCurrentPage.value = 1
+            _stashCanLoadMore.value = false
+
+            if (_stashActiveType.value == StashSearchType.ACTORS) {
+                val res = StashDbApiService.searchPerformers(q, apiKey)
+                res.onSuccess { rawPerformers ->
+                    val sorted = rawPerformers.sortedWith(
+                        compareByDescending<StashPerformer> { performer ->
+                            val name = performer.name.trim().lowercase()
+                            val aliases = performer.aliases.map { it.trim().lowercase() }
+                            when {
+                                name == q.lowercase() -> 100
+                                aliases.contains(q.lowercase()) -> 90
+                                name.startsWith(q.lowercase()) -> 80
+                                aliases.any { it.startsWith(q.lowercase()) } -> 70
+                                name.contains(q.lowercase()) -> 60
+                                aliases.any { it.contains(q.lowercase()) } -> 50
+                                else -> 10
+                            }
+                        }.thenByDescending {
+                            if (!it.imageUrl.isNullOrBlank()) 1 else 0
+                        }.thenBy {
+                            it.name.lowercase()
+                        }
+                    )
+                    _stashPerformerResults.value = sorted
+                    _isStashLoadingEntities.value = false
+                    if (sorted.isNotEmpty()) {
+                        selectStashPerformer(sorted.first(), apiKey)
+                    }
+                }.onFailure { err ->
+                    _stashSearchError.value = err.message ?: "Failed to search actors"
+                    _isStashLoadingEntities.value = false
+                }
+            } else {
+                val res = StashDbApiService.searchStudios(q, apiKey)
+                res.onSuccess { rawStudios ->
+                    val sorted = rawStudios.sortedWith(
+                        compareByDescending<StashStudio> { studio ->
+                            val name = studio.name.trim().lowercase()
+                            when {
+                                name == q.lowercase() -> 100
+                                name.startsWith(q.lowercase()) -> 80
+                                name.contains(q.lowercase()) -> 60
+                                else -> 10
+                            }
+                        }.thenByDescending {
+                            if (!it.logoUrl.isNullOrBlank()) 1 else 0
+                        }.thenBy {
+                            it.name.lowercase()
+                        }
+                    )
+                    _stashStudioResults.value = sorted
+                    _isStashLoadingEntities.value = false
+                    if (sorted.isNotEmpty()) {
+                        selectStashStudio(sorted.first(), apiKey)
+                    }
+                }.onFailure { err ->
+                    _stashSearchError.value = err.message ?: "Failed to search studios"
+                    _isStashLoadingEntities.value = false
+                }
+            }
+        }
+    }
+
+    fun selectStashPerformer(performer: StashPerformer, apiKey: String) {
+        _stashSelectedPerformer.value = performer
+        _stashSelectedStudio.value = null
+        stashScenesJob?.cancel()
+        stashScenesJob = viewModelScope.launch(Dispatchers.IO) {
+            _isStashLoadingScenes.value = true
+            _stashCurrentPage.value = 1
+            _stashScenesList.value = emptyList()
+            _stashSearchError.value = null
+
+            val res = StashDbApiService.queryPerformerScenes(
+                performerId = performer.id,
+                apiKey = apiKey,
+                page = 1,
+                perPage = 30
+            )
+            res.onSuccess { queryResult ->
+                _stashTotalScenesCount.value = queryResult.count
+                _stashScenesList.value = queryResult.scenes
+                _stashCanLoadMore.value = queryResult.scenes.isNotEmpty() && (1 * 30 < queryResult.count)
+                _isStashLoadingScenes.value = false
+            }.onFailure { err ->
+                _stashSearchError.value = err.message ?: "Failed to load scenes"
+                _isStashLoadingScenes.value = false
+            }
+        }
+    }
+
+    fun selectStashStudio(studio: StashStudio, apiKey: String) {
+        _stashSelectedStudio.value = studio
+        _stashSelectedPerformer.value = null
+        stashScenesJob?.cancel()
+        stashScenesJob = viewModelScope.launch(Dispatchers.IO) {
+            _isStashLoadingScenes.value = true
+            _stashCurrentPage.value = 1
+            _stashScenesList.value = emptyList()
+            _stashSearchError.value = null
+
+            val res = StashDbApiService.queryStudioScenes(
+                studioId = studio.id,
+                apiKey = apiKey,
+                page = 1,
+                perPage = 30,
+                providedChildIds = studio.childIds
+            )
+            res.onSuccess { queryResult ->
+                _stashTotalScenesCount.value = queryResult.count
+                _stashScenesList.value = queryResult.scenes
+                _stashCanLoadMore.value = queryResult.scenes.isNotEmpty() && (1 * 30 < queryResult.count)
+                _isStashLoadingScenes.value = false
+            }.onFailure { err ->
+                _stashSearchError.value = err.message ?: "Failed to load studio scenes"
+                _isStashLoadingScenes.value = false
+            }
+        }
+    }
+
+    fun loadMoreStashScenes(apiKey: String) {
+        if (_isStashLoadingMore.value || !_stashCanLoadMore.value) return
+        val nextPage = _stashCurrentPage.value + 1
+
+        viewModelScope.launch(Dispatchers.IO) {
+            _isStashLoadingMore.value = true
+            val selectedPerf = _stashSelectedPerformer.value
+            val selectedStud = _stashSelectedStudio.value
+
+            if (selectedPerf != null) {
+                val res = StashDbApiService.queryPerformerScenes(
+                    performerId = selectedPerf.id,
+                    apiKey = apiKey,
+                    page = nextPage,
+                    perPage = 30
+                )
+                res.onSuccess { queryResult ->
+                    _stashCurrentPage.value = nextPage
+                    val current = _stashScenesList.value
+                    val newUnique = queryResult.scenes.filter { ns -> current.none { it.id == ns.id } }
+                    val updated = current + newUnique
+                    _stashScenesList.value = updated
+                    _stashCanLoadMore.value = queryResult.scenes.isNotEmpty() && (nextPage * 30 < queryResult.count)
+                }
+            } else if (selectedStud != null) {
+                val res = StashDbApiService.queryStudioScenes(
+                    studioId = selectedStud.id,
+                    apiKey = apiKey,
+                    page = nextPage,
+                    perPage = 30,
+                    providedChildIds = selectedStud.childIds
+                )
+                res.onSuccess { queryResult ->
+                    _stashCurrentPage.value = nextPage
+                    val current = _stashScenesList.value
+                    val newUnique = queryResult.scenes.filter { ns -> current.none { it.id == ns.id } }
+                    val updated = current + newUnique
+                    _stashScenesList.value = updated
+                    _stashCanLoadMore.value = queryResult.scenes.isNotEmpty() && (nextPage * 30 < queryResult.count)
+                }
+            }
+            _isStashLoadingMore.value = false
+        }
+    }
+
+    fun saveSelectedStashScenes(onComplete: (Int) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val selectedIds = _stashSelectedSceneIds.value
+            if (selectedIds.isEmpty()) return@launch
+
+            val scenesToSave = _stashScenesList.value.filter { selectedIds.contains(it.id) }
+            if (scenesToSave.isEmpty()) return@launch
+
+            val allExistingActors = repository.allActors.first()
+            val allExistingStudios = repository.allStudios.first()
+            val allExistingLinks = repository.allLinks.first()
+
+            val newActorsMap = mutableMapOf<String, ActorEntity>()
+            val newStudiosMap = mutableMapOf<String, StudioEntity>()
+            val linksToInsert = mutableListOf<LinkEntity>()
+
+            for (scene in scenesToSave) {
+                // 1. Process female performers
+                val actorIds = mutableListOf<String>()
+                for (perf in scene.femalePerformers) {
+                    val pName = perf.name.trim()
+                    if (pName.isBlank()) continue
+
+                    val existing = allExistingActors.find {
+                        (it.stashDbId != null && it.stashDbId == perf.id) ||
+                        it.name.trim().equals(pName, ignoreCase = true)
+                    } ?: newActorsMap.values.find {
+                        (it.stashDbId != null && it.stashDbId == perf.id) ||
+                        it.name.trim().equals(pName, ignoreCase = true)
+                    }
+
+                    if (existing != null) {
+                        actorIds.add(existing.id)
+                    } else {
+                        val newActorId = UUID.randomUUID().toString()
+                        val actor = ActorEntity(
+                            id = newActorId,
+                            stashDbId = perf.id,
+                            name = perf.name,
+                            imageUrl = perf.imageUrl ?: "",
+                            originalImageUrl = perf.imageUrl
+                        )
+                        newActorsMap[perf.id] = actor
+                        actorIds.add(newActorId)
+                    }
+                }
+
+                // 2. Process Studio
+                val studioIds = mutableListOf<String>()
+                if (!scene.studioName.isNullOrBlank()) {
+                    val sName = scene.studioName.trim()
+                    val existingStudio = allExistingStudios.find {
+                        (scene.studioId != null && it.stashDbId == scene.studioId) ||
+                        it.name.trim().equals(sName, ignoreCase = true)
+                    } ?: newStudiosMap.values.find {
+                        (scene.studioId != null && it.stashDbId == scene.studioId) ||
+                        it.name.trim().equals(sName, ignoreCase = true)
+                    }
+
+                    if (existingStudio != null) {
+                        studioIds.add(existingStudio.id)
+                    } else {
+                        val newStudioId = UUID.randomUUID().toString()
+                        val studio = StudioEntity(
+                            id = newStudioId,
+                            stashDbId = scene.studioId,
+                            name = scene.studioName,
+                            logoUrl = scene.studioLogo,
+                            imageUrl = scene.studioLogo
+                        )
+                        newStudiosMap[scene.studioId ?: sName] = studio
+                        studioIds.add(newStudioId)
+                    }
+                }
+
+                // 3. Parse date
+                val parsedDate = StashDbApiService.parseDateToMillis(scene.date)
+
+                // 4. Check if Link already exists
+                val existingLink = allExistingLinks.find {
+                    (it.stashDbId != null && it.stashDbId == scene.id) ||
+                    (it.title.trim().equals(scene.title.trim(), ignoreCase = true) && it.assignedDate == parsedDate)
+                }
+
+                val linkToSave = if (existingLink != null) {
+                    existingLink.copy(
+                        stashDbId = scene.id,
+                        title = scene.title,
+                        coverImage = if (existingLink.coverImage.isBlank()) (scene.coverUrl ?: "") else existingLink.coverImage,
+                        actorIds = (existingLink.actorIds + actorIds).distinct(),
+                        studioIds = (existingLink.studioIds + studioIds).distinct(),
+                        assignedDate = existingLink.assignedDate ?: parsedDate
+                    )
+                } else {
+                    LinkEntity(
+                        id = UUID.randomUUID().toString(),
+                        stashDbId = scene.id,
+                        title = scene.title,
+                        coverImage = scene.coverUrl ?: "",
+                        actorIds = actorIds.distinct(),
+                        studioIds = studioIds.distinct(),
+                        assignedDate = parsedDate
+                    )
+                }
+
+                linksToInsert.add(linkToSave)
+            }
+
+            // Batch insert everything into Room
+            if (newActorsMap.isNotEmpty()) {
+                repository.insertActors(newActorsMap.values.toList())
+            }
+            if (newStudiosMap.isNotEmpty()) {
+                repository.insertStudios(newStudiosMap.values.toList())
+            }
+            if (linksToInsert.isNotEmpty()) {
+                repository.insertLinks(linksToInsert)
+            }
+
+            _stashSelectedSceneIds.value = emptySet()
+            withContext(Dispatchers.Main) {
+                onComplete(linksToInsert.size)
+            }
+        }
     }
 
     // Search, Tabs, Filter and Sort

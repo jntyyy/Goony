@@ -607,7 +607,7 @@ fun LinkCard(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.padding(24.dp)
                     ) {
-                        CircularProgressIndicator(
+                        SmoothProgressIndicator(
                             modifier = Modifier.size(42.dp),
                             color = accent,
                             strokeWidth = 3.5.dp
