@@ -70,6 +70,7 @@ fun ActorManagementScreen(
 
     Scaffold(
         containerColor = palette.bg,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Actors (${actors.size})", color = palette.textPrimary) },
@@ -157,7 +158,7 @@ fun ActorManagementScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(top = padding.calculateTopPadding()),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {

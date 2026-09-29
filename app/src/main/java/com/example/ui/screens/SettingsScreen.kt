@@ -107,6 +107,7 @@ fun SettingsScreen(
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {
@@ -159,7 +160,7 @@ fun SettingsScreen(
                     SettingsMainMenu(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(padding)
+                            .padding(top = padding.calculateTopPadding())
                             .verticalScroll(rememberScrollState()),
                         themeName = themeName,
                         rdKeyConfigured = rdKey.isNotBlank() || torboxKey.isNotBlank(),
@@ -170,7 +171,7 @@ fun SettingsScreen(
                     SettingsDisplaySection(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(padding)
+                            .padding(top = padding.calculateTopPadding())
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp),
                         themeName = themeName,
@@ -197,7 +198,7 @@ fun SettingsScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(padding)
+                            .padding(top = padding.calculateTopPadding())
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -300,7 +301,7 @@ fun SettingsScreen(
                     DataBackupSection(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(padding)
+                            .padding(top = padding.calculateTopPadding())
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp),
                         onExportJson = { viewModel.exportDataJson() },
@@ -311,7 +312,7 @@ fun SettingsScreen(
                     SettingsSampleDataSection(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(padding)
+                            .padding(top = padding.calculateTopPadding())
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp),
                         sampleDataStatus = sampleDataStatus,

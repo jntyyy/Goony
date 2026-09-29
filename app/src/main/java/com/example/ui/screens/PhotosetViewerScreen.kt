@@ -32,6 +32,7 @@ fun PhotosetViewerScreen(
 
     Scaffold(
         containerColor = palette.bg,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("$title (${images.size}P)", color = palette.textPrimary) },
@@ -46,10 +47,13 @@ fun PhotosetViewerScreen(
     ) { padding ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 110.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(8.dp),
+            contentPadding = PaddingValues(
+                top = padding.calculateTopPadding() + 8.dp,
+                bottom = 8.dp,
+                start = 8.dp,
+                end = 8.dp
+            ),
+            modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {

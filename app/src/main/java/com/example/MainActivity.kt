@@ -19,12 +19,25 @@ import com.example.ui.theme.GVJVaultTheme
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import coil.Coil
+import coil.ImageLoader
+import coil.decode.SvgDecoder
+import com.example.network.NetworkClient
 import com.example.ui.ScreenState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Setup global Coil ImageLoader with browser User-Agent and SVG support for StashDB studio logos
+        val imageLoader = ImageLoader.Builder(applicationContext)
+            .okHttpClient(NetworkClient.okHttpClient)
+            .components {
+                add(SvgDecoder.Factory())
+            }
+            .build()
+        Coil.setImageLoader(imageLoader)
+
         // Pure Transparent Edge-To-Edge for both Status Bar and Navigation Bar
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),

@@ -341,8 +341,8 @@ fun BookmarksScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentPadding = WindowInsets.navigationBars.asPaddingValues(),
+                    .padding(top = padding.calculateTopPadding()),
+                contentPadding = PaddingValues(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 items(bookmarkedLinks, key = { it.id }) { link ->

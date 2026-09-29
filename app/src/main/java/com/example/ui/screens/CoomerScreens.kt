@@ -59,6 +59,7 @@ fun CoomerManagementScreen(
 
     Scaffold(
         containerColor = palette.bg,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("OnlyHaven (${coomers.size})", color = palette.textPrimary) },
@@ -80,7 +81,7 @@ fun CoomerManagementScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(top = padding.calculateTopPadding()),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -95,10 +96,13 @@ fun CoomerManagementScreen(
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 160.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 16.dp,
+                    bottom = 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                ),
+                modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -276,6 +280,7 @@ fun CoomerDetailScreen(
 
     Scaffold(
         containerColor = palette.bg,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text(creator?.name ?: "Creator Posts", color = palette.textPrimary) },
@@ -289,14 +294,14 @@ fun CoomerDetailScreen(
         }
     ) { padding ->
         if (creator == null) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()), contentAlignment = Alignment.Center) {
                 Text("Creator not found", color = palette.textPrimary)
             }
         } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
+                    .padding(top = padding.calculateTopPadding())
             ) {
                 // Filter Tabs
                 TabRow(

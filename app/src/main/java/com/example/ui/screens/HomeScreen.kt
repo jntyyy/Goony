@@ -445,9 +445,9 @@ fun HomeScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(top = paddingValues.calculateTopPadding()),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
-                contentPadding = WindowInsets.navigationBars.asPaddingValues()
+                contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 items(displayedLinks, key = { it.id }) { link ->
                     val isBookmarked = remember(bookmarkedIds, link.id) {

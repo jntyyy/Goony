@@ -53,6 +53,7 @@ fun HanimeManagementScreen(
 
     Scaffold(
         containerColor = palette.bg,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Hanime Vault (${seriesList.size})", color = palette.textPrimary) },
@@ -74,7 +75,7 @@ fun HanimeManagementScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(top = padding.calculateTopPadding()),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -89,10 +90,13 @@ fun HanimeManagementScreen(
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 160.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 16.dp,
+                    bottom = 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                ),
+                modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -265,6 +269,7 @@ fun HanimeDetailScreen(
 
     Scaffold(
         containerColor = palette.bg,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text(series?.title ?: "Series Details", color = palette.textPrimary) },
@@ -288,15 +293,18 @@ fun HanimeDetailScreen(
         }
     ) { padding ->
         if (series == null) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()), contentAlignment = Alignment.Center) {
                 Text("Series not found", color = palette.textPrimary)
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 16.dp,
+                    bottom = 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                ),
+                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Header Banner & Description

@@ -1,7 +1,9 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -229,7 +231,8 @@ fun StashDbScreen(
                 studioId = studio.id,
                 apiKey = settings.stashDbApiKey,
                 page = 1,
-                perPage = 30
+                perPage = 30,
+                providedChildIds = studio.childIds
             )
 
             result.fold(
@@ -266,7 +269,8 @@ fun StashDbScreen(
                         studioId = selectedStudio!!.id,
                         apiKey = apiKey,
                         page = nextPage,
-                        perPage = 30
+                        perPage = 30,
+                        providedChildIds = selectedStudio!!.childIds
                     )
                 } else {
                     Result.failure(Exception("No target selected"))
@@ -458,6 +462,7 @@ fun StashDbScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = palette.bg,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -561,21 +566,49 @@ fun StashDbScreen(
                     }
                 },
                 actions = {
-                    // Save button in head: always visible, disabled until scenes are selected
-                    val isSaveEnabled = selectedSceneIds.isNotEmpty()
-                    IconButton(
-                        onClick = { if (isSaveEnabled) saveSelectedScenes() },
-                        enabled = isSaveEnabled,
-                        modifier = Modifier.testTag("save_selected_scenes_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Save Selected Scenes",
-                            tint = if (isSaveEnabled) accent else palette.textMuted.copy(alpha = 0.35f)
-                        )
-                    }
-
-                    if (!isSearchExpanded) {
+                    if (isSearchExpanded) {
+                        AnimatedContent(
+                            targetState = selectedSceneIds.isNotEmpty(),
+                            transitionSpec = {
+                                (fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.8f)) togetherWith
+                                (fadeOut(animationSpec = tween(180)) + scaleOut(targetScale = 0.8f))
+                            },
+                            label = "topbar_action_transition"
+                        ) { hasSelected ->
+                            if (hasSelected) {
+                                IconButton(
+                                    onClick = { saveSelectedScenes() },
+                                    modifier = Modifier.testTag("save_selected_scenes_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Save Selected Scenes",
+                                        tint = accent
+                                    )
+                                }
+                            } else {
+                                IconButton(
+                                    onClick = {
+                                        isSearchExpanded = false
+                                        searchQuery = ""
+                                        performerResults = emptyList()
+                                        studioResults = emptyList()
+                                        scenesList = emptyList()
+                                        selectedPerformer = null
+                                        selectedStudio = null
+                                        selectedSceneIds = emptySet()
+                                    },
+                                    modifier = Modifier.testTag("close_search_action_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close Search",
+                                        tint = palette.textPrimary
+                                    )
+                                }
+                            }
+                        }
+                    } else {
                         IconButton(
                             onClick = { isSearchExpanded = true },
                             modifier = Modifier.testTag("stashdb_search_action_button")
@@ -598,7 +631,7 @@ fun StashDbScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(top = padding.calculateTopPadding())
         ) {
             // Two Mode Selector Tabs: Actors & Studio
             PrimaryTabRow(
@@ -683,7 +716,7 @@ fun StashDbScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                         )
                         LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -709,7 +742,7 @@ fun StashDbScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                         )
                         LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -874,6 +907,15 @@ fun HorizontalActorCircleItem(
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
 
+    val circleScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.08f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "actor_circle_scale"
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -884,16 +926,21 @@ fun HorizontalActorCircleItem(
     ) {
         Box(
             modifier = Modifier
-                .size(62.dp)
-                .clip(CircleShape)
-                .background(palette.cardBg)
+                .padding(vertical = 4.dp)
+                .size(60.dp)
+                .graphicsLayer {
+                    scaleX = circleScale
+                    scaleY = circleScale
+                }
                 .border(
                     BorderStroke(
-                        if (isSelected) 2.5.dp else 1.dp,
-                        if (isSelected) accent else palette.border
+                        if (isSelected) 2.5.dp else 1.2.dp,
+                        if (isSelected) accent else palette.border.copy(alpha = 0.6f)
                     ),
                     CircleShape
-                ),
+                )
+                .clip(CircleShape)
+                .background(palette.cardBg),
             contentAlignment = Alignment.Center
         ) {
             if (!performer.imageUrl.isNullOrBlank()) {
@@ -909,14 +956,6 @@ fun HorizontalActorCircleItem(
                     contentDescription = null,
                     tint = palette.textMuted,
                     modifier = Modifier.size(28.dp)
-                )
-            }
-
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(accent.copy(alpha = 0.2f))
                 )
             }
         }
@@ -939,6 +978,8 @@ fun HorizontalActorCircleItem(
 
 /**
  * Circular Item for Studio displayed in the horizontal row (Circle on top, Name below)
+ * Displays StashDB studio PNG logos on a solid AMOLED dark background (Color(0xFF0F0F12))
+ * for seamless integration as a unified image.
  */
 @Composable
 fun HorizontalStudioCircleItem(
@@ -948,6 +989,32 @@ fun HorizontalStudioCircleItem(
 ) {
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
+
+    val circleScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.08f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "studio_circle_scale"
+    )
+
+    val context = LocalContext.current
+    val formattedLogoUrl = remember(studio.logoUrl) {
+        studio.logoUrl?.trim()?.replace("http://", "https://")
+    }
+
+    val imageRequest = remember(formattedLogoUrl) {
+        if (!formattedLogoUrl.isNullOrBlank()) {
+            ImageRequest.Builder(context)
+                .data(formattedLogoUrl)
+                .crossfade(true)
+                .build()
+        } else null
+    }
+
+    // Dark AMOLED background specifically designed for transparent Studio PNG logos
+    val studioAmoledBg = Color(0xFF0F0F12)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -959,42 +1026,40 @@ fun HorizontalStudioCircleItem(
     ) {
         Box(
             modifier = Modifier
-                .size(62.dp)
-                .clip(CircleShape)
-                .background(palette.cardBg)
+                .padding(vertical = 4.dp)
+                .size(60.dp)
+                .graphicsLayer {
+                    scaleX = circleScale
+                    scaleY = circleScale
+                }
                 .border(
                     BorderStroke(
-                        if (isSelected) 2.5.dp else 1.dp,
-                        if (isSelected) accent else palette.border
+                        if (isSelected) 2.5.dp else 1.2.dp,
+                        if (isSelected) accent else palette.border.copy(alpha = 0.6f)
                     ),
                     CircleShape
-                ),
+                )
+                .clip(CircleShape)
+                .background(studioAmoledBg),
             contentAlignment = Alignment.Center
         ) {
-            if (!studio.logoUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = studio.logoUrl,
-                    contentDescription = studio.name,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp)
-                )
+            if (imageRequest != null) {
+                var isImageError by remember(formattedLogoUrl) { mutableStateOf(false) }
+                if (!isImageError) {
+                    AsyncImage(
+                        model = imageRequest,
+                        contentDescription = studio.name,
+                        contentScale = ContentScale.Fit,
+                        onError = { isImageError = true },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(8.dp)
+                    )
+                } else {
+                    StudioFallbackEmblem(name = studio.name, accentColor = accent)
+                }
             } else {
-                Icon(
-                    imageVector = Icons.Default.MovieCreation,
-                    contentDescription = null,
-                    tint = palette.textMuted,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(accent.copy(alpha = 0.15f))
-                )
+                StudioFallbackEmblem(name = studio.name, accentColor = accent)
             }
         }
 
@@ -1016,12 +1081,13 @@ fun HorizontalStudioCircleItem(
 
 /**
  * 2-Cards-Per-Row Scene Card matching the exact screenshot layout:
+ * - Smooth entrance slide-up + fade-in animation
  * - Rounded corners (16.dp)
- * - Cover image (16:10)
+ * - Cover image (16:9)
  * - Dimmed/desaturated image with circular check badge when selected
  * - Bold title (1 line with ellipsis)
  * - Subtle divider
- * - 3 metadata rows with outlined icons (Person, Videocam, CalendarToday)
+ * - 3 metadata rows with outlined icons (Person, Studio Logo/Videocam, CalendarToday)
  */
 @Composable
 fun StashGridPhotoCard(
@@ -1034,12 +1100,45 @@ fun StashGridPhotoCard(
     val accent = LocalAccentColor.current
     val context = LocalContext.current
 
+    // Smooth entrance animation state when card loads into view
+    var isCardVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(scene.id) {
+        isCardVisible = true
+    }
+
+    val animatedCardAlpha by animateFloatAsState(
+        targetValue = if (isCardVisible) (if (isAlreadySaved && !isSelected) 0.65f else 1.0f) else 0f,
+        animationSpec = tween(durationMillis = 320, easing = LinearOutSlowInEasing),
+        label = "card_entrance_alpha"
+    )
+
+    val animatedCardTranslationY by animateFloatAsState(
+        targetValue = if (isCardVisible) 0f else 28f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "card_entrance_translation"
+    )
+
+    val cardSelectionScale by animateFloatAsState(
+        targetValue = if (isSelected) 0.965f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "card_select_scale"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .graphicsLayer {
-                alpha = if (isAlreadySaved && !isSelected) 0.65f else 1.0f
+                alpha = animatedCardAlpha
+                translationY = animatedCardTranslationY
+                scaleX = cardSelectionScale
+                scaleY = cardSelectionScale
             }
             .clickable(onClick = onToggleSelect)
             .testTag("stash_scene_${scene.id}"),
@@ -1101,23 +1200,36 @@ fun StashGridPhotoCard(
                 }
 
                 // Circular Check badge in top right for selected or saved links
-                if (isSelected || isAlreadySaved) {
-                    Surface(
-                        shape = CircleShape,
-                        color = accent,
-                        shadowElevation = 4.dp,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .size(24.dp)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                ) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isSelected || isAlreadySaved,
+                        enter = fadeIn(animationSpec = tween(180)) + scaleIn(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            ),
+                            initialScale = 0.5f
+                        ),
+                        exit = fadeOut(animationSpec = tween(150)) + scaleOut(targetScale = 0.5f)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = if (isSelected) "Selected" else "Saved",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        Surface(
+                            shape = CircleShape,
+                            color = accent,
+                            shadowElevation = 4.dp,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = if (isSelected) "Selected" else "Saved",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -1231,7 +1343,7 @@ fun StashGridPhotoCard(
                     )
                 }
 
-                // Row 2: Videocam Outline Icon + Studio
+                // Row 2: Studio Videocam Icon + Studio Name
                 val studioText = scene.studioName ?: "Studio"
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -1242,7 +1354,7 @@ fun StashGridPhotoCard(
                         imageVector = Icons.Outlined.Videocam,
                         contentDescription = null,
                         tint = palette.textSecondary,
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(13.5.dp)
                     )
                     Text(
                         text = studioText,
@@ -1368,4 +1480,36 @@ private fun sortStudiosByRelevance(studios: List<StashStudio>, query: String): L
             it.name.lowercase()
         }
     )
+}
+
+/**
+ * Fallback emblem for studios when logo URL is missing or fails to load.
+ * Displays stylized studio initials on a dark AMOLED gradient.
+ */
+@Composable
+private fun StudioFallbackEmblem(name: String, accentColor: Color) {
+    val initials = name.trim().split(" ", "-", "_")
+        .take(2)
+        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+        .joinToString("")
+        .ifBlank { "S" }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(accentColor.copy(alpha = 0.35f), Color(0xFF0F0F12))
+                )
+            )
+    ) {
+        Text(
+            text = initials,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.White,
+            letterSpacing = 0.5.sp
+        )
+    }
 }

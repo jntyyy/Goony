@@ -207,6 +207,7 @@ fun AddEditLinkScreen(
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text(if (existingLink != null) "Edit Scene" else "Add Scene", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
@@ -261,7 +262,7 @@ fun AddEditLinkScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(top = padding.calculateTopPadding())
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
