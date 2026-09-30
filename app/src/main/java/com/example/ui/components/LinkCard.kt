@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.local.entity.ActorEntity
@@ -110,27 +111,8 @@ fun LinkCard(
     // Internal Submenu state while active
     var subMenuState by remember { mutableStateOf<CardActionMenuState?>(null) }
     var selectedSource by remember { mutableStateOf<Source?>(null) }
-    var lastToggleTime by remember { mutableLongStateOf(0L) }
-    val scope = rememberCoroutineScope()
-    val bounceScale = remember { androidx.compose.animation.core.Animatable(1f) }
-
-    var bounceJob: kotlinx.coroutines.Job? by remember { mutableStateOf(null) }
     var showAllActorsPopup by remember { mutableStateOf(false) }
 
-    fun triggerBounce() {
-        bounceJob?.cancel()
-        bounceJob = scope.launch {
-            bounceScale.snapTo(0.91f)
-            bounceScale.animateTo(
-                targetValue = 1f,
-                animationSpec = spring(
-                    dampingRatio = 0.65f,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            )
-        }
-    }
-    
     val currentMenuState = when {
         !isActiveCard -> CardActionMenuState.CLOSED
         subMenuState != null -> subMenuState!!
@@ -138,12 +120,25 @@ fun LinkCard(
     }
     val isOverlayActive = currentMenuState != CardActionMenuState.CLOSED
 
-    // Close when dismissed from outside or record activation time
+    var lastOpenMenuState by remember { mutableStateOf(CardActionMenuState.MAIN_MENU) }
+    if (currentMenuState != CardActionMenuState.CLOSED) {
+        lastOpenMenuState = currentMenuState
+    }
+
+    val menuProgress by animateFloatAsState(
+        targetValue = if (isOverlayActive) 1f else 0f,
+        animationSpec = if (isOverlayActive) spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow)
+                        else tween(150, easing = FastOutLinearInEasing),
+        label = "menu_progress"
+    )
+
+    val isOverlayVisible by remember {
+        derivedStateOf { menuProgress > 0.001f }
+    }
+
+    // Close when dismissed from outside
     LaunchedEffect(isActiveCard) {
-        if (isActiveCard) {
-            lastToggleTime = System.currentTimeMillis()
-            triggerBounce()
-        } else {
+        if (!isActiveCard) {
             subMenuState = null
             selectedSource = null
         }
@@ -157,9 +152,8 @@ fun LinkCard(
             subMenuState = null
             onDismissActive()
         } else {
-            // Open and trigger bouncy pop animation instantly on first click!
+            // Open on first click!
             subMenuState = CardActionMenuState.MAIN_MENU
-            triggerBounce()
             onActivate()
         }
     }
@@ -275,10 +269,10 @@ fun LinkCard(
         label = "cover_reveal_alpha"
     )
     val coverScale by animateFloatAsState(
-        targetValue = if (isOverlayActive) 1.04f else 1.0f,
+        targetValue = if (isOverlayActive) 1.15f else 1.0f,
         animationSpec = tween(
-            durationMillis = 320,
-            easing = FargosEasing
+            durationMillis = 420,
+            easing = FastOutSlowInEasing
         ),
         label = "cover_scale"
     )
@@ -328,7 +322,7 @@ fun LinkCard(
                     modifier = Modifier
                         .fillMaxSize()
                         .then(
-                            if (isOverlayActive) {
+                            if (imageBlur > 0.dp) {
                                 Modifier.blur(imageBlur)
                             } else {
                                 Modifier
@@ -404,6 +398,7 @@ fun LinkCard(
                         .graphicsLayer { alpha = scrimAlpha }
                         .background(Color.Black.copy(alpha = 0.55f))
                         .clickable(
+                            enabled = isOverlayActive,
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
@@ -412,41 +407,60 @@ fun LinkCard(
                 )
             }
 
-            // Smooth Fargos-style Slide-Up & Fade transition
-            AnimatedContent(
-                targetState = currentMenuState,
-                transitionSpec = {
-                    (fadeIn(animationSpec = tween(220, easing = FargosEasing)) +
-                            slideInVertically(
-                                initialOffsetY = { fullHeight -> fullHeight / 3 },
-                                animationSpec = tween(280, easing = FargosEasing)
-                            ))
-                        .togetherWith(
-                            fadeOut(animationSpec = tween(180, easing = FargosEasing)) +
-                                    slideOutVertically(
-                                        targetOffsetY = { fullHeight -> fullHeight / 3 },
-                                        animationSpec = tween(180, easing = FargosEasing)
-                                    )
-                        )
-                        .using(
-                            SizeTransform(clip = false) { _, _ ->
-                                tween(durationMillis = 200, easing = FargosEasing)
+            // Smooth Native Zoom & Enhanced Bouncy Pop-up transition (Interruption-safe overlay)
+            if (isOverlayVisible) {
+                CompositionLocalProvider(LocalActionsInteractive provides isOverlayActive) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.Center)
+                            .graphicsLayer {
+                                val p = menuProgress
+                                alpha = (p * 1.5f).coerceIn(0f, 1f)
+                                val s = lerp(0.65f, 1f, p)
+                                scaleX = s
+                                scaleY = s
                             }
-                        )
-                },
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.Center)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                label = "center_spread_content"
-            ) { state ->
-                when (state) {
-                    CardActionMenuState.CLOSED -> {
-                        Spacer(modifier = Modifier.size(0.dp))
-                    }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AnimatedContent(
+                            targetState = if (isOverlayActive) currentMenuState else lastOpenMenuState,
+                            transitionSpec = {
+                                (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
+                                        scaleIn(
+                                            initialScale = 0.65f,
+                                            animationSpec = spring(
+                                                dampingRatio = 0.65f,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            )
+                                        ))
+                                    .togetherWith(
+                                        fadeOut(animationSpec = tween(150, easing = FastOutLinearInEasing)) +
+                                                scaleOut(
+                                                    targetScale = 0.85f,
+                                                    animationSpec = spring(
+                                                        dampingRatio = 0.65f,
+                                                        stiffness = Spring.StiffnessMediumLow
+                                                    )
+                                                )
+                                    )
+                                    .using(
+                                        SizeTransform(clip = false) { _, _ ->
+                                            tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                                        }
+                                    )
+                            },
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = "center_spread_content"
+                        ) { state ->
+                            when (state) {
+                                CardActionMenuState.CLOSED -> {
+                                    Spacer(modifier = Modifier.size(0.dp))
+                                }
 
-                    CardActionMenuState.MAIN_MENU -> {
+                                CardActionMenuState.MAIN_MENU -> {
                         MainActionMenu(
                             onMagnetClick = {
                                 selectedSource = Source.MAGNET
@@ -526,66 +540,67 @@ fun LinkCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // The other actors list (excluding the first one)
-                            link.actorIds.drop(1).forEachIndexed { index, actorId ->
+                            link.actorIds.drop(1).forEach { actorId ->
                                 val actorName = actorsMap[actorId] ?: actorId
                                 val actorImg = fullActorsMap[actorId]?.imageUrl ?: ""
                                 
-                                FargosStaggeredItem(index = index) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                                        modifier = Modifier
-                                            .padding(horizontal = 4.dp)
-                                            .width(72.dp)
-                                            .clip(RectangleShape)
-                                            .clickable {
-                                                subMenuState = null
-                                                onDismissActive()
-                                                onActorClick(actorId)
-                                            }
-                                            .padding(vertical = 4.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(54.dp)
-                                                .clip(CircleShape)
-                                                .background(palette.surface)
-                                                .border(2.dp, accent.copy(alpha = 0.35f), CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (actorImg.isNotEmpty()) {
-                                                AsyncImage(
-                                                    model = actorImg,
-                                                    contentDescription = actorName,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = Icons.Default.AccountCircle,
-                                                    contentDescription = null,
-                                                    tint = palette.textMuted,
-                                                    modifier = Modifier.size(32.dp)
-                                                )
-                                            }
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier
+                                        .padding(horizontal = 4.dp)
+                                        .width(72.dp)
+                                        .clip(RectangleShape)
+                                        .clickable(enabled = isOverlayActive) {
+                                            subMenuState = null
+                                            onDismissActive()
+                                            onActorClick(actorId)
                                         }
-                                        Text(
-                                            text = actorName,
-                                            color = palette.textPrimary,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(54.dp)
+                                            .clip(CircleShape)
+                                            .background(palette.surface)
+                                            .border(2.dp, accent.copy(alpha = 0.35f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (actorImg.isNotEmpty()) {
+                                            AsyncImage(
+                                                model = actorImg,
+                                                contentDescription = actorName,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.AccountCircle,
+                                                contentDescription = null,
+                                                tint = palette.textMuted,
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
                                     }
+                                    Text(
+                                        text = actorName,
+                                        color = palette.textPrimary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
 
             // ========================================================
             // Inline Resolution & Progress Overlay (replaces popup dialog)
@@ -753,7 +768,6 @@ fun LinkCard(
                                             .clickable {
                                                 subMenuState = CardActionMenuState.ACTORS_MENU
                                                 onActivate()
-                                                triggerBounce()
                                             }
                                             .testTag("more_actors_button"),
                                         contentAlignment = Alignment.Center
