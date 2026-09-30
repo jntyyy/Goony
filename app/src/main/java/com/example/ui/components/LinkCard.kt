@@ -275,10 +275,10 @@ fun LinkCard(
         label = "cover_reveal_alpha"
     )
     val coverScale by animateFloatAsState(
-        targetValue = if (isOverlayActive) 1.15f else 1.0f,
+        targetValue = if (isOverlayActive) 1.04f else 1.0f,
         animationSpec = tween(
-            durationMillis = 420,
-            easing = FastOutSlowInEasing
+            durationMillis = 320,
+            easing = FargosEasing
         ),
         label = "cover_scale"
     )
@@ -372,7 +372,7 @@ fun LinkCard(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.72f))
+                                .background(Color.Black.copy(alpha = 0.28f))
                         )
                     }
                 } else {
@@ -412,31 +412,25 @@ fun LinkCard(
                 )
             }
 
-            // Smooth Native Zoom & Enhanced Bouncy Pop-up transition (Centered + Instant Size Snap)
+            // Smooth Fargos-style Slide-Up & Fade transition
             AnimatedContent(
                 targetState = currentMenuState,
                 transitionSpec = {
-                    (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
-                            scaleIn(
-                                initialScale = 0.65f,
-                                animationSpec = spring(
-                                    dampingRatio = 0.65f,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
+                    (fadeIn(animationSpec = tween(220, easing = FargosEasing)) +
+                            slideInVertically(
+                                initialOffsetY = { fullHeight -> fullHeight / 3 },
+                                animationSpec = tween(280, easing = FargosEasing)
                             ))
                         .togetherWith(
-                            fadeOut(animationSpec = tween(150, easing = FastOutLinearInEasing)) +
-                                    scaleOut(
-                                        targetScale = 0.85f,
-                                        animationSpec = spring(
-                                            dampingRatio = 0.65f,
-                                            stiffness = Spring.StiffnessMediumLow
-                                        )
+                            fadeOut(animationSpec = tween(180, easing = FargosEasing)) +
+                                    slideOutVertically(
+                                        targetOffsetY = { fullHeight -> fullHeight / 3 },
+                                        animationSpec = tween(180, easing = FargosEasing)
                                     )
                         )
                         .using(
                             SizeTransform(clip = false) { _, _ ->
-                                tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                                tween(durationMillis = 200, easing = FargosEasing)
                             }
                         )
                 },
@@ -444,10 +438,6 @@ fun LinkCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.Center)
-                    .graphicsLayer {
-                        scaleX = bounceScale.value
-                        scaleY = bounceScale.value
-                    }
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 label = "center_spread_content"
             ) { state ->
@@ -536,58 +526,60 @@ fun LinkCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // The other actors list (excluding the first one)
-                            link.actorIds.drop(1).forEach { actorId ->
+                            link.actorIds.drop(1).forEachIndexed { index, actorId ->
                                 val actorName = actorsMap[actorId] ?: actorId
                                 val actorImg = fullActorsMap[actorId]?.imageUrl ?: ""
                                 
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier
-                                        .padding(horizontal = 4.dp)
-                                        .width(72.dp)
-                                        .clip(RectangleShape)
-                                        .clickable {
-                                            subMenuState = null
-                                            onDismissActive()
-                                            onActorClick(actorId)
-                                        }
-                                        .padding(vertical = 4.dp)
-                                ) {
-                                    Box(
+                                FargosStaggeredItem(index = index) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
                                         modifier = Modifier
-                                            .size(54.dp)
-                                            .clip(CircleShape)
-                                            .background(palette.surface)
-                                            .border(2.dp, accent.copy(alpha = 0.35f), CircleShape),
-                                        contentAlignment = Alignment.Center
+                                            .padding(horizontal = 4.dp)
+                                            .width(72.dp)
+                                            .clip(RectangleShape)
+                                            .clickable {
+                                                subMenuState = null
+                                                onDismissActive()
+                                                onActorClick(actorId)
+                                            }
+                                            .padding(vertical = 4.dp)
                                     ) {
-                                        if (actorImg.isNotEmpty()) {
-                                            AsyncImage(
-                                                model = actorImg,
-                                                contentDescription = actorName,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-                                        } else {
-                                            Icon(
-                                                imageVector = Icons.Default.AccountCircle,
-                                                contentDescription = null,
-                                                tint = palette.textMuted,
-                                                modifier = Modifier.size(32.dp)
-                                            )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(54.dp)
+                                                .clip(CircleShape)
+                                                .background(palette.surface)
+                                                .border(2.dp, accent.copy(alpha = 0.35f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (actorImg.isNotEmpty()) {
+                                                AsyncImage(
+                                                    model = actorImg,
+                                                    contentDescription = actorName,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = Icons.Default.AccountCircle,
+                                                    contentDescription = null,
+                                                    tint = palette.textMuted,
+                                                    modifier = Modifier.size(32.dp)
+                                                )
+                                            }
                                         }
+                                        Text(
+                                            text = actorName,
+                                            color = palette.textPrimary,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
                                     }
-                                    Text(
-                                        text = actorName,
-                                        color = palette.textPrimary,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
                                 }
                             }
                         }

@@ -35,9 +35,44 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+
+@Composable
+fun FargosStaggeredItem(
+    index: Int,
+    modifier: Modifier = Modifier,
+    delayPerItemMs: Long = 40L,
+    content: @Composable () -> Unit
+) {
+    var animateIn by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(index * delayPerItemMs)
+        animateIn = true
+    }
+
+    val translateY by animateFloatAsState(
+        targetValue = if (animateIn) 0f else 28f,
+        animationSpec = fargosTween(280),
+        label = "fargos_btn_translate_y"
+    )
+    val alphaVal by animateFloatAsState(
+        targetValue = if (animateIn) 1f else 0f,
+        animationSpec = fargosTween(220),
+        label = "fargos_btn_alpha"
+    )
+
+    Box(
+        modifier = modifier.graphicsLayer {
+            translationY = translateY
+            alpha = alphaVal
+        }
+    ) {
+        content()
+    }
+}
 
 object BtnColors {
     val Magnet = Color(0xFF8B5CF6)
@@ -180,42 +215,47 @@ fun MainActionMenu(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ActionCircleButton(
-            label = "Magnet",
-            color = BtnColors.Magnet,
-            onClick = onMagnetClick,
-            modifier = Modifier.weight(1f),
-            icon = painterResource(R.drawable.ic_magnet),
-            iconRotation = 0f
-        )
-        ActionCircleButton(
-            label = "URL",
-            color = BtnColors.Url,
-            onClick = onUrlClick,
-            modifier = Modifier.weight(1f),
-            icon = painterResource(R.drawable.ic_url_link)
-        )
-        ActionCircleButton(
-            label = if (isSaved) "Saved" else "Save",
-            color = BtnColors.Save,
-            onClick = onSave,
-            modifier = Modifier.weight(1f),
-            icon = painterResource(if (isSaved) R.drawable.ic_bookmark_saved else R.drawable.ic_bookmark_save)
-        )
-        ActionCircleButton(
-            label = "Edit",
-            color = BtnColors.Edit,
-            onClick = onEdit,
-            modifier = Modifier.weight(1f),
-            icon = painterResource(R.drawable.ic_edit_pencil)
-        )
-        ActionCircleButton(
-            label = "Delete",
-            color = BtnColors.Delete,
-            onClick = onDelete,
-            modifier = Modifier.weight(1f),
-            icon = painterResource(R.drawable.ic_delete_trash)
-        )
+        FargosStaggeredItem(index = 0, modifier = Modifier.weight(1f)) {
+            ActionCircleButton(
+                label = "Magnet",
+                color = BtnColors.Magnet,
+                onClick = onMagnetClick,
+                icon = painterResource(R.drawable.ic_magnet),
+                iconRotation = 0f
+            )
+        }
+        FargosStaggeredItem(index = 1, modifier = Modifier.weight(1f)) {
+            ActionCircleButton(
+                label = "URL",
+                color = BtnColors.Url,
+                onClick = onUrlClick,
+                icon = painterResource(R.drawable.ic_url_link)
+            )
+        }
+        FargosStaggeredItem(index = 2, modifier = Modifier.weight(1f)) {
+            ActionCircleButton(
+                label = if (isSaved) "Saved" else "Save",
+                color = BtnColors.Save,
+                onClick = onSave,
+                icon = painterResource(if (isSaved) R.drawable.ic_bookmark_saved else R.drawable.ic_bookmark_save)
+            )
+        }
+        FargosStaggeredItem(index = 3, modifier = Modifier.weight(1f)) {
+            ActionCircleButton(
+                label = "Edit",
+                color = BtnColors.Edit,
+                onClick = onEdit,
+                icon = painterResource(R.drawable.ic_edit_pencil)
+            )
+        }
+        FargosStaggeredItem(index = 4, modifier = Modifier.weight(1f)) {
+            ActionCircleButton(
+                label = "Delete",
+                color = BtnColors.Delete,
+                onClick = onDelete,
+                icon = painterResource(R.drawable.ic_delete_trash)
+            )
+        }
     }
 }
 
@@ -232,20 +272,24 @@ fun QualitySelectMenu(
         horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ActionCircleButton(
-            label = "HD",
-            color = BtnColors.Hd,
-            onClick = onSelectHD,
-            text = "HD",
-            enabled = hasHD
-        )
-        ActionCircleButton(
-            label = "4K",
-            color = BtnColors.K4,
-            onClick = onSelect4K,
-            text = "4K",
-            enabled = has4K
-        )
+        FargosStaggeredItem(index = 0) {
+            ActionCircleButton(
+                label = "HD",
+                color = BtnColors.Hd,
+                onClick = onSelectHD,
+                text = "HD",
+                enabled = hasHD
+            )
+        }
+        FargosStaggeredItem(index = 1) {
+            ActionCircleButton(
+                label = "4K",
+                color = BtnColors.K4,
+                onClick = onSelect4K,
+                text = "4K",
+                enabled = has4K
+            )
+        }
     }
 }
 
@@ -271,19 +315,23 @@ fun DeleteConfirmMenu(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ActionCircleButton(
-                label = "Cancel",
-                color = BtnColors.Cancel,
-                onClick = onCancel,
-                icon = painterResource(R.drawable.ic_action_cancel)
-            )
-            ActionCircleButton(
-                label = "Delete",
-                color = BtnColors.Delete,
-                onClick = onConfirm,
-                icon = painterResource(R.drawable.ic_delete_trash),
-                strongHaptic = true
-            )
+            FargosStaggeredItem(index = 0) {
+                ActionCircleButton(
+                    label = "Cancel",
+                    color = BtnColors.Cancel,
+                    onClick = onCancel,
+                    icon = painterResource(R.drawable.ic_action_cancel)
+                )
+            }
+            FargosStaggeredItem(index = 1) {
+                ActionCircleButton(
+                    label = "Delete",
+                    color = BtnColors.Delete,
+                    onClick = onConfirm,
+                    icon = painterResource(R.drawable.ic_delete_trash),
+                    strongHaptic = true
+                )
+            }
         }
     }
 }
