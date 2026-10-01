@@ -230,10 +230,13 @@ fun ActorManagementScreen(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .graphicsLayer {
-                                                scaleX = actor.imageZoom
-                                                scaleY = actor.imageZoom
-                                                translationX = ((actor.imagePositionX - 50f) / 100f) * size.width
-                                                translationY = ((actor.imagePositionY - 50f) / 100f) * size.height
+                                                val z = actor.imageZoom.coerceAtLeast(1.0f)
+                                                scaleX = z
+                                                scaleY = z
+                                                val maxPanX = ((z - 1.0f) / 2f) * size.width
+                                                val maxPanY = ((z - 1.0f) / 2f) * size.height
+                                                translationX = if (maxPanX > 0f) ((actor.imagePositionX - 50f) / 50f) * maxPanX else 0f
+                                                translationY = if (maxPanY > 0f) ((actor.imagePositionY - 50f) / 50f) * maxPanY else 0f
                                             }
                                             .privacyImageBlur(isBetaTest)
                                     )

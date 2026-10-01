@@ -579,7 +579,7 @@ fun HomeScreen(
 
         var posX by remember(targetActor.id, targetActor.imagePositionX) { mutableFloatStateOf(targetActor.imagePositionX) }
         var posY by remember(targetActor.id, targetActor.imagePositionY) { mutableFloatStateOf(targetActor.imagePositionY) }
-        var zoom by remember(targetActor.id, targetActor.imageZoom) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(0.7f, 3.0f)) }
+        var zoom by remember(targetActor.id, targetActor.imageZoom) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(1.0f, 3.0f)) }
 
         val isBetaTest = LocalBetaTestPrivacy.current
         val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
@@ -593,70 +593,67 @@ fun HomeScreen(
             },
             shape = RoundedCornerShape(28.dp),
             title = {
-                Crossfade(targetState = isAdjustMode, animationSpec = tween(180), label = "ActorTitleCrossfade") { adjustMode ->
-                    if (!adjustMode) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                if (!isAdjustMode) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Actor Details",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        IconButton(
+                            onClick = { isAdjustMode = true },
+                            modifier = Modifier.testTag("adjust_actor_photo_button")
                         ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Adjust Photo Position & Zoom",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { isAdjustMode = false },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Spacer(Modifier.width(4.dp))
                             Text(
-                                text = "Actor Details",
+                                text = "Adjust Photo",
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleLarge
                             )
-                            IconButton(
-                                onClick = { isAdjustMode = true },
-                                modifier = Modifier.testTag("adjust_actor_photo_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Adjust Photo Position & Zoom",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
                         }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        TextButton(
+                            onClick = {
+                                posX = 50f
+                                posY = 50f
+                                zoom = 1.0f
+                            }
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
-                                    onClick = { isAdjustMode = false },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Back",
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = "Adjust Photo",
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleLarge
-                                )
-                            }
-                            TextButton(
-                                onClick = {
-                                    posX = 50f
-                                    posY = 50f
-                                    zoom = 1.0f
-                                }
-                            ) {
-                                Text("Reset", style = MaterialTheme.typography.labelLarge)
-                            }
+                            Text("Reset", style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
             },
             text = {
-                Crossfade(targetState = isAdjustMode, animationSpec = tween(180), label = "ActorContentCrossfade") { adjustMode ->
-                    if (!adjustMode) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!isAdjustMode) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             // Static / Unchangeable Name Field matching Add Scene style
                             OutlinedTextField(
                                 value = targetActor.name,
@@ -799,8 +796,10 @@ fun HomeScreen(
                                                 .graphicsLayer {
                                                     scaleX = zoom
                                                     scaleY = zoom
-                                                    translationX = ((posX - 50f) / 100f) * size.width
-                                                    translationY = ((posY - 50f) / 100f) * size.height
+                                                    val maxPanX = ((zoom - 1.0f).coerceAtLeast(0f) / 2f) * size.width
+                                                    val maxPanY = ((zoom - 1.0f).coerceAtLeast(0f) / 2f) * size.height
+                                                    translationX = if (maxPanX > 0f) ((posX - 50f) / 50f) * maxPanX else 0f
+                                                    translationY = if (maxPanY > 0f) ((posY - 50f) / 50f) * maxPanY else 0f
                                                 }
                                                 .privacyImageBlur(isBetaTest)
                                         )
@@ -913,55 +912,50 @@ fun HomeScreen(
                                     SleekSlimSlider(
                                         value = zoom,
                                         onValueChange = { zoom = it },
-                                        valueRange = 0.7f..3.0f
+                                        valueRange = 1.0f..3.0f
                                     )
                                 }
                             }
                         }
                     }
-                }
             },
             confirmButton = {
-                Crossfade(targetState = isAdjustMode, animationSpec = tween(180), label = "ActorConfirmCrossfade") { adjustMode ->
-                    if (adjustMode) {
-                        Button(
-                            onClick = {
-                                val updatedActor = targetActor.copy(
-                                    imagePositionX = posX,
-                                    imagePositionY = posY,
-                                    imageZoom = zoom
-                                )
-                                viewModel.saveActor(updatedActor)
-                                showEditActorDialog = false
-                                confirmDeleteActor = false
-                                isAdjustMode = false
-                            },
-                            shape = CircleShape
-                        ) {
-                            Text("Save")
-                        }
+                if (isAdjustMode) {
+                    Button(
+                        onClick = {
+                            val updatedActor = targetActor.copy(
+                                imagePositionX = posX,
+                                imagePositionY = posY,
+                                imageZoom = zoom
+                            )
+                            viewModel.saveActor(updatedActor)
+                            showEditActorDialog = false
+                            confirmDeleteActor = false
+                            isAdjustMode = false
+                        },
+                        shape = CircleShape
+                    ) {
+                        Text("Save")
                     }
                 }
             },
             dismissButton = {
-                Crossfade(targetState = isAdjustMode, animationSpec = tween(180), label = "ActorDismissCrossfade") { adjustMode ->
-                    if (!adjustMode) {
-                        TextButton(
-                            onClick = {
-                                showEditActorDialog = false
-                                confirmDeleteActor = false
-                            },
-                            shape = CircleShape
-                        ) {
-                            Text("Close")
-                        }
-                    } else {
-                        TextButton(
-                            onClick = { isAdjustMode = false },
-                            shape = CircleShape
-                        ) {
-                            Text("Back")
-                        }
+                if (!isAdjustMode) {
+                    TextButton(
+                        onClick = {
+                            showEditActorDialog = false
+                            confirmDeleteActor = false
+                        },
+                        shape = CircleShape
+                    ) {
+                        Text("Close")
+                    }
+                } else {
+                    TextButton(
+                        onClick = { isAdjustMode = false },
+                        shape = CircleShape
+                    ) {
+                        Text("Back")
                     }
                 }
             }
@@ -1008,59 +1002,56 @@ fun HomeScreen(
             },
             shape = RoundedCornerShape(28.dp),
             title = {
-                Crossfade(targetState = isAdjustMode, animationSpec = tween(180), label = "StudioTitleCrossfade") { adjustMode ->
-                    if (!adjustMode) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                if (!isAdjustMode) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Studio Details",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        IconButton(
+                            onClick = { isAdjustMode = true },
+                            modifier = Modifier.testTag("adjust_studio_bg_button")
                         ) {
-                            Text(
-                                text = "Studio Details",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            IconButton(
-                                onClick = { isAdjustMode = true },
-                                modifier = Modifier.testTag("adjust_studio_bg_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Adjust Logo Background",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = { isAdjustMode = false },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = "Logo Background",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleLarge
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Adjust Logo Background",
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { isAdjustMode = false },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Logo Background",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge
+                        )
                     }
                 }
             },
             text = {
-                Crossfade(targetState = isAdjustMode, animationSpec = tween(180), label = "StudioContentCrossfade") { adjustMode ->
-                    if (!adjustMode) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!isAdjustMode) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             // Static / Unchangeable Name Field matching Add Scene style
                             OutlinedTextField(
                                 value = targetStudio.name,
@@ -1265,45 +1256,40 @@ fun HomeScreen(
                             }
                         }
                     }
-                }
             },
             confirmButton = {
-                Crossfade(targetState = isAdjustMode, animationSpec = tween(180), label = "StudioConfirmCrossfade") { adjustMode ->
-                    if (adjustMode) {
-                        Button(
-                            onClick = {
-                                val finalHex = if (isCustomBgEnabled) hexString else null
-                                viewModel.saveStudio(targetStudio.copy(logoBgColor = finalHex))
-                                showEditStudioDialog = false
-                                confirmDeleteStudio = false
-                                isAdjustMode = false
-                            },
-                            shape = CircleShape
-                        ) {
-                            Text("Save")
-                        }
+                if (isAdjustMode) {
+                    Button(
+                        onClick = {
+                            val finalHex = if (isCustomBgEnabled) hexString else null
+                            viewModel.saveStudio(targetStudio.copy(logoBgColor = finalHex))
+                            showEditStudioDialog = false
+                            confirmDeleteStudio = false
+                            isAdjustMode = false
+                        },
+                        shape = CircleShape
+                    ) {
+                        Text("Save")
                     }
                 }
             },
             dismissButton = {
-                Crossfade(targetState = isAdjustMode, animationSpec = tween(180), label = "StudioDismissCrossfade") { adjustMode ->
-                    if (!adjustMode) {
-                        TextButton(
-                            onClick = {
-                                showEditStudioDialog = false
-                                confirmDeleteStudio = false
-                            },
-                            shape = CircleShape
-                        ) {
-                            Text("Close")
-                        }
-                    } else {
-                        TextButton(
-                            onClick = { isAdjustMode = false },
-                            shape = CircleShape
-                        ) {
-                            Text("Back")
-                        }
+                if (!isAdjustMode) {
+                    TextButton(
+                        onClick = {
+                            showEditStudioDialog = false
+                            confirmDeleteStudio = false
+                        },
+                        shape = CircleShape
+                    ) {
+                        Text("Close")
+                    }
+                } else {
+                    TextButton(
+                        onClick = { isAdjustMode = false },
+                        shape = CircleShape
+                    ) {
+                        Text("Back")
                     }
                 }
             }

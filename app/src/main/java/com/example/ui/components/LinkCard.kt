@@ -586,10 +586,13 @@ fun LinkCard(
                                                 modifier = Modifier
                                                     .fillMaxSize()
                                                     .graphicsLayer {
-                                                        scaleX = actorZoom
-                                                        scaleY = actorZoom
-                                                        translationX = ((actorPosX - 50f) / 100f) * size.width
-                                                        translationY = ((actorPosY - 50f) / 100f) * size.height
+                                                        val z = actorZoom.coerceAtLeast(1.0f)
+                                                        scaleX = z
+                                                        scaleY = z
+                                                        val maxPanX = ((z - 1.0f) / 2f) * size.width
+                                                        val maxPanY = ((z - 1.0f) / 2f) * size.height
+                                                        translationX = if (maxPanX > 0f) ((actorPosX - 50f) / 50f) * maxPanX else 0f
+                                                        translationY = if (maxPanY > 0f) ((actorPosY - 50f) / 50f) * maxPanY else 0f
                                                     }
                                             )
                                         } else {

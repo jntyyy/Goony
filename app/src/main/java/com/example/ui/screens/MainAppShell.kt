@@ -344,20 +344,18 @@ fun MainAppShell(viewModel: MainViewModel) {
                             transitionSpec = {
                                 when (currentSettings.transitionStyle) {
                                     1 -> {
-                                        // Lateral / Horizontal Slide (Opposite of Vertical)
+                                        // Lateral / Horizontal Slide (Exact match to Settings screen transition - Ultra-Light & Fluid)
                                         if (navDirection == MainViewModel.NavigationDirection.BACK) {
-                                            (slideInHorizontally(animationSpec = tween(280, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
-                                                    fadeIn(animationSpec = tween(240)))
+                                            fadeIn(animationSpec = tween(200))
                                                 .togetherWith(
-                                                    slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { width -> width / 3 } +
-                                                            fadeOut(animationSpec = tween(200))
+                                                    fadeOut(animationSpec = tween(150)) +
+                                                            slideOutHorizontally(animationSpec = tween(200)) { width -> width / 3 }
                                                 )
                                         } else {
-                                            (slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> width / 3 } +
-                                                    fadeIn(animationSpec = tween(260)))
+                                            (fadeIn(animationSpec = tween(200)) +
+                                                    slideInHorizontally(animationSpec = tween(200)) { width -> width / 3 })
                                                 .togetherWith(
-                                                    slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
-                                                            fadeOut(animationSpec = tween(200))
+                                                    fadeOut(animationSpec = tween(150))
                                                 )
                                         }
                                     }
