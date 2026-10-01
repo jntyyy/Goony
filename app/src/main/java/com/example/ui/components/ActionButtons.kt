@@ -67,9 +67,11 @@ fun ActionCircleButton(
     val haptic = LocalHapticFeedback.current
     val interactive = LocalActionsInteractive.current
     var pressed by remember { mutableStateOf(false) }
+    val lastClickTimeState = remember { mutableLongStateOf(0L) }
+
     val scale by animateFloatAsState(
         targetValue = if (pressed && enabled && interactive) 0.92f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 120, easing = androidx.compose.animation.core.FastOutSlowInEasing),
         label = "press"
     )
 
@@ -100,7 +102,13 @@ fun ActionCircleButton(
                                 pressed = false
                             }
                         },
-                        onTap = { onClick() }
+                        onTap = {
+                            val now = System.currentTimeMillis()
+                            if (now - lastClickTimeState.longValue >= 280L) {
+                                lastClickTimeState.longValue = now
+                                onClick()
+                            }
+                        }
                     )
                 },
             contentAlignment = Alignment.Center

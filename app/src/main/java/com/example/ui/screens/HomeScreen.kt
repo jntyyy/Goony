@@ -51,7 +51,17 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.unit.Dp
+import com.example.network.StashDbApiService
+import com.example.ui.components.SmoothProgressIndicator
 import coil.compose.AsyncImage
 import com.example.data.local.entity.ActorEntity
 import com.example.data.local.entity.LinkEntity
@@ -112,15 +122,42 @@ fun HomeScreen(
         }
     }
 
-    // O(1) Precomputed Fast Lookup Maps - computed once at Screen level on data change
+    // O(1) Precomputed Fast Lookup Maps - support ID, name, lowercase name, and StashDb ID
     val actorsMap = remember(actors) {
-        actors.associate { it.id to it.name }
+        val map = mutableMapOf<String, String>()
+        actors.forEach { actor ->
+            map[actor.id] = actor.name
+            map[actor.name] = actor.name
+            map[actor.name.trim().lowercase()] = actor.name
+            if (!actor.stashDbId.isNullOrBlank()) {
+                map[actor.stashDbId] = actor.name
+            }
+        }
+        map
     }
     val fullActorsMap = remember(actors) {
-        actors.associateBy { it.id }
+        val map = mutableMapOf<String, ActorEntity>()
+        actors.forEach { actor ->
+            map[actor.id] = actor
+            map[actor.name] = actor
+            map[actor.name.trim().lowercase()] = actor
+            if (!actor.stashDbId.isNullOrBlank()) {
+                map[actor.stashDbId] = actor
+            }
+        }
+        map
     }
     val studiosMap = remember(studios) {
-        studios.associate { it.id to it.name }
+        val map = mutableMapOf<String, String>()
+        studios.forEach { studio ->
+            map[studio.id] = studio.name
+            map[studio.name] = studio.name
+            map[studio.name.trim().lowercase()] = studio.name
+            if (!studio.stashDbId.isNullOrBlank()) {
+                map[studio.stashDbId] = studio.name
+            }
+        }
+        map
     }
 
     var isSearchExpanded by remember { mutableStateOf(false) }
@@ -592,6 +629,31 @@ fun HomeScreen(
         var posY by remember(targetActor.id) { mutableFloatStateOf(targetActor.imagePositionY.coerceIn(0f, 100f)) }
         var zoom by remember(targetActor.id) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(1.0f, 3.0f)) }
 
+        var selectedImageUrl by remember(targetActor.id) { mutableStateOf(targetActor.imageUrl) }
+        var fetchedImages by remember(targetActor.id) { mutableStateOf<List<String>>(emptyList()) }
+        var isFetchingImages by remember(targetActor.id) { mutableStateOf(false) }
+
+        LaunchedEffect(targetActor.id, isAdjustMode) {
+            if (isAdjustMode && fetchedImages.isEmpty() && settings.stashDbApiKey.isNotBlank()) {
+                isFetchingImages = true
+                val imgs = StashDbApiService.fetchPerformerAllImages(
+                    stashDbId = targetActor.stashDbId,
+                    performerName = targetActor.name,
+                    apiKey = settings.stashDbApiKey
+                )
+                val combined = mutableListOf<String>()
+                if (targetActor.imageUrl.isNotBlank()) combined.add(targetActor.imageUrl)
+                if (!targetActor.originalImageUrl.isNullOrBlank() && !combined.contains(targetActor.originalImageUrl)) {
+                    combined.add(targetActor.originalImageUrl!!)
+                }
+                imgs.forEach { url ->
+                    if (!combined.contains(url)) combined.add(url)
+                }
+                fetchedImages = combined
+                isFetchingImages = false
+            }
+        }
+
         val isBetaTest = LocalBetaTestPrivacy.current
         val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
         val circleBorderColor = if (isLight) Color.Black else Color.White
@@ -785,12 +847,13 @@ fun HomeScreen(
                                     .background(MaterialTheme.colorScheme.surfaceVariant),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (!targetActor.imageUrl.isNullOrBlank()) {
+                                val currentPreviewUrl = selectedImageUrl.ifBlank { targetActor.imageUrl }
+                                if (currentPreviewUrl.isNotBlank()) {
                                     val z = zoom.coerceIn(1f, 3f)
                                     val biasX = (posX.coerceIn(0f, 100f) - 50f) / 50f
                                     val biasY = (posY.coerceIn(0f, 100f) - 50f) / 50f
                                     AsyncImage(
-                                        model = targetActor.imageUrl,
+                                        model = currentPreviewUrl,
                                         contentDescription = targetActor.name,
                                         contentScale = ContentScale.Crop,
                                         alignment = BiasAlignment(biasX, biasY),
@@ -832,90 +895,158 @@ fun HomeScreen(
                                 )
                             }
 
-                            // 3 Sliders: X, Y, Zoom (Slim, clean, smooth control)
+                            // 3 Compact Sliders: X, Y, Z (Zoom) with letter on left
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 // Slider X
-                                Column {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "X (Horizontal)",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = "${posX.toInt()}%",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "X",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.width(16.dp)
+                                    )
                                     SleekSlimSlider(
                                         value = posX,
                                         onValueChange = { posX = it },
-                                        valueRange = 0f..100f
+                                        valueRange = 0f..100f,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = "${posX.toInt()}%",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier.width(38.dp)
                                     )
                                 }
 
                                 // Slider Y
-                                Column {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "Y (Vertical)",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = "${posY.toInt()}%",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "Y",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.width(16.dp)
+                                    )
                                     SleekSlimSlider(
                                         value = posY,
                                         onValueChange = { posY = it },
-                                        valueRange = 0f..100f
+                                        valueRange = 0f..100f,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = "${posY.toInt()}%",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier.width(38.dp)
                                     )
                                 }
 
-                                // Slider Zoom
-                                Column {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "Zoom",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = String.format(Locale.US, "%.2fx", zoom),
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+                                // Slider Z (Zoom)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "Z",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.width(16.dp)
+                                    )
                                     SleekSlimSlider(
                                         value = zoom,
                                         onValueChange = { zoom = it },
-                                        valueRange = 1.0f..3.0f
+                                        valueRange = 1.0f..3.0f,
+                                        modifier = Modifier.weight(1f)
                                     )
+                                    Text(
+                                        text = String.format(Locale.US, "%.1fx", zoom),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier.width(38.dp)
+                                    )
+                                }
+                            }
+
+                            // Horizontal Circle Photo Selector with Gradient Mask on edges
+                            if (isFetchingImages) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    SmoothProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Fetching photos...", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            } else if (fetchedImages.size > 1) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "Select Photo (${fetchedImages.size})",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .horizontalFadeEdge(20.dp)
+                                    ) {
+                                        items(fetchedImages, key = { it }) { imgUrl ->
+                                            val isSelected = imgUrl == selectedImageUrl
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(50.dp)
+                                                    .border(
+                                                        BorderStroke(
+                                                            if (isSelected) 2.5.dp else 1.dp,
+                                                            if (isSelected) MaterialTheme.colorScheme.primary else circleBorderColor.copy(alpha = 0.4f)
+                                                        ),
+                                                        CircleShape
+                                                    )
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                                    .clickable { selectedImageUrl = imgUrl },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                AsyncImage(
+                                                    model = imgUrl,
+                                                    contentDescription = "Photo option",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .privacyImageBlur(isBetaTest)
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -926,6 +1057,7 @@ fun HomeScreen(
                     Button(
                         onClick = {
                             val updatedActor = targetActor.copy(
+                                imageUrl = selectedImageUrl.ifBlank { targetActor.imageUrl },
                                 imagePositionX = posX,
                                 imagePositionY = posY,
                                 imageZoom = zoom
@@ -1469,3 +1601,28 @@ private fun GradientSlider(
         }
     }
 }
+
+/**
+ * Lightweight, GPU-accelerated horizontal fade mask for smooth gradient edge aesthetic.
+ */
+private fun Modifier.horizontalFadeEdge(fadeWidth: Dp = 20.dp): Modifier = this.then(
+    Modifier
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val fadePx = fadeWidth.toPx()
+            if (size.width > fadePx * 2 && fadePx > 0f) {
+                val leftFraction = (fadePx / size.width).coerceIn(0f, 0.49f)
+                val rightFraction = 1f - leftFraction
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        leftFraction to Color.Black,
+                        rightFraction to Color.Black,
+                        1f to Color.Transparent
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+        }
+)

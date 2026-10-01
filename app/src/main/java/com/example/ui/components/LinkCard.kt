@@ -129,10 +129,18 @@ fun LinkCard(
         lastOpenMenuState = currentMenuState
     }
 
+    val lastClickTimeState = remember { mutableLongStateOf(0L) }
+    fun debouncedClick(action: () -> Unit) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastClickTimeState.longValue >= 280L) {
+            lastClickTimeState.longValue = currentTime
+            action()
+        }
+    }
+
     val menuProgress by animateFloatAsState(
         targetValue = if (isOverlayActive) 1f else 0f,
-        animationSpec = if (isOverlayActive) spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow)
-                        else tween(150, easing = FastOutLinearInEasing),
+        animationSpec = tween(durationMillis = 180, easing = LinearOutSlowInEasing),
         label = "menu_progress"
     )
 
@@ -149,31 +157,32 @@ fun LinkCard(
     }
 
     fun handleCoverTap() {
-        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        debouncedClick {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
 
-        if (isOverlayActive) {
-            // Dismiss instantly on second click, even if clicked extremely fast!
-            subMenuState = null
-            onDismissActive()
-        } else {
-            // Open on first click!
-            subMenuState = CardActionMenuState.MAIN_MENU
-            onActivate()
+            if (isOverlayActive) {
+                subMenuState = null
+                onDismissActive()
+            } else {
+                subMenuState = CardActionMenuState.MAIN_MENU
+                onActivate()
+            }
         }
     }
 
     fun handleScrimTap() {
-        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        
-        if (currentMenuState == CardActionMenuState.ACTORS_MENU) {
-            subMenuState = null
-            onDismissActive()
-        } else if (currentMenuState != CardActionMenuState.MAIN_MENU) {
-            subMenuState = CardActionMenuState.MAIN_MENU
-        } else {
-            // Close instantly when clicking on the scrim background
-            subMenuState = null
-            onDismissActive()
+        debouncedClick {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            
+            if (currentMenuState == CardActionMenuState.ACTORS_MENU) {
+                subMenuState = null
+                onDismissActive()
+            } else if (currentMenuState != CardActionMenuState.MAIN_MENU) {
+                subMenuState = CardActionMenuState.MAIN_MENU
+            } else {
+                subMenuState = null
+                onDismissActive()
+            }
         }
     }
 
@@ -432,27 +441,21 @@ fun LinkCard(
                         AnimatedContent(
                             targetState = if (isOverlayActive) currentMenuState else lastOpenMenuState,
                             transitionSpec = {
-                                (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
+                                (fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) +
                                         scaleIn(
-                                            initialScale = 0.65f,
-                                            animationSpec = spring(
-                                                dampingRatio = 0.65f,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
+                                            initialScale = 0.90f,
+                                            animationSpec = tween(180, easing = LinearOutSlowInEasing)
                                         ))
                                     .togetherWith(
-                                        fadeOut(animationSpec = tween(150, easing = FastOutLinearInEasing)) +
+                                        fadeOut(animationSpec = tween(140, easing = FastOutLinearInEasing)) +
                                                 scaleOut(
-                                                    targetScale = 0.85f,
-                                                    animationSpec = spring(
-                                                        dampingRatio = 0.65f,
-                                                        stiffness = Spring.StiffnessMediumLow
-                                                    )
+                                                    targetScale = 0.95f,
+                                                    animationSpec = tween(140, easing = FastOutLinearInEasing)
                                                 )
                                     )
                                     .using(
                                         SizeTransform(clip = false) { _, _ ->
-                                            tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                                            tween(durationMillis = 160, easing = FastOutSlowInEasing)
                                         }
                                     )
                             },
@@ -546,13 +549,14 @@ fun LinkCard(
                         ) {
                             // All actors list
                             link.actorIds.forEach { actorId ->
-                                val actorEntity = fullActorsMap[actorId]
+                                val actorEntity = fullActorsMap[actorId] ?: fullActorsMap[actorId.trim().lowercase()]
                                 val actorName = actorsMap[actorId] ?: actorEntity?.name ?: actorId
                                 val actorImg = actorEntity?.imageUrl ?: ""
                                 val actorZoom = actorEntity?.imageZoom ?: 1.0f
                                 val actorPosX = actorEntity?.imagePositionX ?: 50f
                                 val actorPosY = actorEntity?.imagePositionY ?: 50f
-                                
+                                val realActorId = actorEntity?.id ?: actorId
+
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -561,9 +565,11 @@ fun LinkCard(
                                         .width(72.dp)
                                         .clip(RectangleShape)
                                         .clickable(enabled = isOverlayActive) {
-                                            subMenuState = null
-                                            onDismissActive()
-                                            onActorClick(actorId)
+                                            debouncedClick {
+                                                subMenuState = null
+                                                onDismissActive()
+                                                onActorClick(realActorId)
+                                            }
                                         }
                                         .padding(vertical = 4.dp)
                                 ) {
@@ -759,8 +765,10 @@ fun LinkCard(
                             )
                         } else {
                             val firstActorId = link.actorIds[0]
-                            val firstActorName = actorsMap[firstActorId] ?: firstActorId
-                            
+                            val firstActorEntity = fullActorsMap[firstActorId] ?: fullActorsMap[firstActorId.trim().lowercase()]
+                            val firstActorName = actorsMap[firstActorId] ?: firstActorEntity?.name ?: firstActorId
+                            val realActorId = firstActorEntity?.id ?: firstActorId
+
                             Row(
                                 modifier = Modifier.weight(1f, fill = false),
                                 verticalAlignment = Alignment.CenterVertically
@@ -777,24 +785,28 @@ fun LinkCard(
                                     modifier = Modifier
                                         .clip(RectangleShape)
                                         .clickable {
-                                            subMenuState = null
-                                            onDismissActive()
-                                            onActorClick(firstActorId)
+                                            debouncedClick {
+                                                subMenuState = null
+                                                onDismissActive()
+                                                onActorClick(realActorId)
+                                            }
                                         }
                                         .padding(horizontal = 2.dp, vertical = 2.dp)
                                         .weight(1f, fill = false)
                                 )
-                                
+
                                 if (link.actorIds.size > 1) {
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    
+
                                     Box(
                                         modifier = Modifier
                                             .size(24.dp)
                                             .clip(CircleShape)
                                             .clickable {
-                                                subMenuState = CardActionMenuState.ACTORS_MENU
-                                                onActivate()
+                                                debouncedClick {
+                                                    subMenuState = CardActionMenuState.ACTORS_MENU
+                                                    onActivate()
+                                                }
                                             }
                                             .testTag("more_actors_button"),
                                         contentAlignment = Alignment.Center

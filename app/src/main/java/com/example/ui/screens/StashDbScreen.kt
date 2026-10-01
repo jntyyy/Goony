@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -265,7 +266,7 @@ fun StashDbScreen(
                                 ) {
                                     if (searchQuery.isEmpty()) {
                                         Text(
-                                            text = if (activeType == StashSearchType.ACTORS) "Search female actors..." else "Search studios...",
+                                            text = if (activeType == StashSearchType.ACTORS) "Search actor..." else "Search studio...",
                                             style = MaterialTheme.typography.bodyLarge.copy(
                                                 fontSize = 15.sp,
                                                 color = palette.textMuted
@@ -502,13 +503,13 @@ fun StashDbScreen(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.RecentActors,
+                                        painter = painterResource(id = R.drawable.ic_nav_actor),
                                         contentDescription = null,
                                         tint = if (isActorsSelected) accent else palette.textSecondary,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Text(
-                                        text = "Actors",
+                                        text = "Actor",
                                         fontWeight = if (isActorsSelected) FontWeight.Bold else FontWeight.SemiBold,
                                         color = if (isActorsSelected) accent else palette.textSecondary
                                     )
@@ -542,7 +543,7 @@ fun StashDbScreen(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.MovieCreation,
+                                        painter = painterResource(id = R.drawable.ic_nav_studio),
                                         contentDescription = null,
                                         tint = if (isStudioSelected) accent else palette.textSecondary,
                                         modifier = Modifier.size(18.dp)
@@ -585,20 +586,42 @@ fun StashDbScreen(
                     ) + fadeOut(animationSpec = tween(150))
                 ) {
                     if (isSearchingTarget) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            SmoothProgressIndicator(color = accent, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Searching ${if (activeType == StashSearchType.ACTORS) "actors" else "studios"}...",
-                                color = palette.textSecondary,
-                                fontSize = 13.sp
+                        Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .width(70.dp)
+                                    .height(10.dp)
+                                    .adaptiveSkeleton(RoundedCornerShape(4.dp))
                             )
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalFadeEdge(24.dp)
+                            ) {
+                                items(7) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.width(76.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(vertical = 4.dp)
+                                                .size(60.dp)
+                                                .adaptiveSkeleton(CircleShape)
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .width(52.dp)
+                                                .height(11.dp)
+                                                .adaptiveSkeleton(RoundedCornerShape(4.dp))
+                                        )
+                                    }
+                                }
+                            }
                         }
                     } else if (activeType == StashSearchType.ACTORS && performerResults.isNotEmpty()) {
                         Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
@@ -666,20 +689,64 @@ fun StashDbScreen(
                         .weight(1f)
                 ) {
                     if (isLoadingScenes) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            SmoothProgressIndicator(color = accent, modifier = Modifier.size(38.dp), strokeWidth = 3.dp)
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Text(
-                                text = "Fetching scenes from StashDB...",
-                                color = palette.textSecondary,
-                                fontSize = 13.sp
-                            )
+                            items(6) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = palette.surface),
+                                    border = null
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        // 16:9 Cover Skeleton
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .aspectRatio(16f / 9f)
+                                                .adaptiveSkeleton(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                                        )
+                                        // Title & metadata skeleton container
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(0.85f)
+                                                    .height(13.dp)
+                                                    .adaptiveSkeleton(RoundedCornerShape(4.dp))
+                                            )
+                                            HorizontalDivider(color = palette.border.copy(alpha = 0.5f))
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(0.6f)
+                                                    .height(10.dp)
+                                                    .adaptiveSkeleton(RoundedCornerShape(4.dp))
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(0.45f)
+                                                    .height(10.dp)
+                                                    .adaptiveSkeleton(RoundedCornerShape(4.dp))
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(0.35f)
+                                                    .height(10.dp)
+                                                    .adaptiveSkeleton(RoundedCornerShape(4.dp))
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     } else if (scenesList.isNotEmpty()) {
                         LazyVerticalGrid(
@@ -738,8 +805,8 @@ fun StashDbScreen(
                         )
                     } else {
                         EmptyStateView(
-                            icon = if (activeType == StashSearchType.ACTORS) Icons.Default.RecentActors else Icons.Default.MovieCreation,
-                            title = if (activeType == StashSearchType.ACTORS) "Search Actors & Explore Scenes" else "Search Studio & Explore Scenes",
+                            icon = if (activeType == StashSearchType.ACTORS) Icons.Outlined.Person else Icons.Outlined.Videocam,
+                            title = if (activeType == StashSearchType.ACTORS) "Search Actor & Explore Scenes" else "Search Studio & Explore Scenes",
                             subtitle = "Tap the search icon in the header, type a name, and tap the search icon to search. Click any scene to select, then tap the checkmark in the header to save."
                         )
                     }
@@ -747,6 +814,29 @@ fun StashDbScreen(
             }
         }
     }
+}
+
+/**
+ * Adaptive Skeleton Modifier tuned for Dark, AMOLED, and Light themes
+ */
+@Composable
+fun Modifier.adaptiveSkeleton(
+    shape: Shape = RoundedCornerShape(8.dp)
+): Modifier {
+    val palette = LocalVaultPalette.current
+    val transition = rememberInfiniteTransition(label = "adaptive_skeleton_anim")
+    val alpha by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.85f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 750, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "skeleton_alpha"
+    )
+    return this
+        .clip(shape)
+        .background(palette.skeletonBg.copy(alpha = alpha))
 }
 
 /**
@@ -986,7 +1076,7 @@ fun StashGridPhotoCard(
         ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.0f) })
     }
 
-    // Smooth entrance animation state when card loads into view
+    // Smooth, lightweight crossfade + subtle scale entrance animation seamlessly replacing skeleton
     var isCardVisible by remember { mutableStateOf(false) }
     LaunchedEffect(scene.id) {
         isCardVisible = true
@@ -994,25 +1084,19 @@ fun StashGridPhotoCard(
 
     val animatedCardAlpha by animateFloatAsState(
         targetValue = if (isCardVisible) (if (isAlreadySaved && !isSelected) 0.65f else 1.0f) else 0f,
-        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 220, easing = LinearOutSlowInEasing),
         label = "card_entrance_alpha"
     )
 
-    val animatedCardTranslationY by animateFloatAsState(
-        targetValue = if (isCardVisible) 0f else 20f,
-        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
-        label = "card_entrance_translation"
-    )
-
-    val cardSelectionScale by animateFloatAsState(
-        targetValue = if (isSelected) 0.978f else 1.0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-        label = "card_select_scale"
+    val animatedCardScale by animateFloatAsState(
+        targetValue = if (isCardVisible) (if (isSelected) 0.978f else 1.0f) else 0.98f,
+        animationSpec = tween(durationMillis = 220, easing = LinearOutSlowInEasing),
+        label = "card_entrance_scale"
     )
 
     val selectionProgress by animateFloatAsState(
         targetValue = if (isSelected) 1.0f else 0.0f,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "card_select_progress"
     )
 
@@ -1024,9 +1108,8 @@ fun StashGridPhotoCard(
             .clip(RoundedCornerShape(16.dp))
             .graphicsLayer {
                 alpha = animatedCardAlpha
-                translationY = animatedCardTranslationY
-                scaleX = cardSelectionScale
-                scaleY = cardSelectionScale
+                scaleX = animatedCardScale
+                scaleY = animatedCardScale
             }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },

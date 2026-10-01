@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.data.local.entity.ActorEntity
 import com.example.data.local.entity.LinkEntity
 import com.example.ui.MainViewModel
 import com.example.ui.ScreenState
@@ -64,9 +65,42 @@ fun BookmarksScreen(
     val activeInlineVideo by viewModel.activeInlineVideo.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
 
-    val actorsMap = remember(actors) { actors.associate { it.id to it.name } }
-    val fullActorsMap = remember(actors) { actors.associateBy { it.id } }
-    val studiosMap = remember(studios) { studios.associate { it.id to it.name } }
+    val actorsMap = remember(actors) {
+        val map = mutableMapOf<String, String>()
+        actors.forEach { actor ->
+            map[actor.id] = actor.name
+            map[actor.name] = actor.name
+            map[actor.name.trim().lowercase()] = actor.name
+            if (!actor.stashDbId.isNullOrBlank()) {
+                map[actor.stashDbId] = actor.name
+            }
+        }
+        map
+    }
+    val fullActorsMap = remember(actors) {
+        val map = mutableMapOf<String, ActorEntity>()
+        actors.forEach { actor ->
+            map[actor.id] = actor
+            map[actor.name] = actor
+            map[actor.name.trim().lowercase()] = actor
+            if (!actor.stashDbId.isNullOrBlank()) {
+                map[actor.stashDbId] = actor
+            }
+        }
+        map
+    }
+    val studiosMap = remember(studios) {
+        val map = mutableMapOf<String, String>()
+        studios.forEach { studio ->
+            map[studio.id] = studio.name
+            map[studio.name] = studio.name
+            map[studio.name.trim().lowercase()] = studio.name
+            if (!studio.stashDbId.isNullOrBlank()) {
+                map[studio.stashDbId] = studio.name
+            }
+        }
+        map
+    }
 
     var isSearchExpanded by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }

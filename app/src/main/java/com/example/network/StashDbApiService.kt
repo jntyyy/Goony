@@ -15,7 +15,8 @@ data class StashPerformer(
     val aliases: List<String> = emptyList(),
     val gender: String? = null,
     val country: String? = null,
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val images: List<String> = emptyList()
 )
 
 data class StashStudio(
@@ -214,9 +215,16 @@ object StashDbApiService {
                 }
 
                 val imagesArray = item.optJSONArray("images")
-                val imageUrl = if (imagesArray != null && imagesArray.length() > 0) {
-                    imagesArray.optJSONObject(0)?.optString("url")?.ifBlank { null }
-                } else null
+                val imagesList = mutableListOf<String>()
+                if (imagesArray != null) {
+                    for (j in 0 until imagesArray.length()) {
+                        val url = imagesArray.optJSONObject(j)?.optString("url")?.ifBlank { null }
+                        if (!url.isNullOrBlank() && !imagesList.contains(url)) {
+                            imagesList.add(url)
+                        }
+                    }
+                }
+                val imageUrl = imagesList.firstOrNull()
 
                 results.add(
                     StashPerformer(
@@ -226,7 +234,8 @@ object StashDbApiService {
                         aliases = aliasesList,
                         gender = gender,
                         country = country,
-                        imageUrl = imageUrl
+                        imageUrl = imageUrl,
+                        images = imagesList
                     )
                 )
             }
@@ -235,6 +244,67 @@ object StashDbApiService {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun fetchPerformerAllImages(stashDbId: String?, performerName: String, apiKey: String): List<String> = withContext(Dispatchers.IO) {
+        val resultList = mutableListOf<String>()
+
+        if (apiKey.isNotBlank() && !stashDbId.isNullOrBlank()) {
+            try {
+                val gqlQuery = """
+                    query FindPerformer(${'$'}id: ID!) {
+                      findPerformer(id: ${'$'}id) {
+                        id
+                        images {
+                          url
+                        }
+                      }
+                    }
+                """.trimIndent()
+
+                val bodyJson = JSONObject().apply {
+                    put("query", gqlQuery)
+                    put("variables", JSONObject().apply { put("id", stashDbId) })
+                }
+
+                val request = Request.Builder()
+                    .url(GRAPHQL_ENDPOINT)
+                    .header("ApiKey", apiKey.trim())
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .post(bodyJson.toString().toRequestBody(JSON_MEDIA_TYPE))
+                    .build()
+
+                val response = NetworkClient.okHttpClient.newCall(request).execute()
+                val rawBody = response.body?.string() ?: ""
+
+                if (response.isSuccessful) {
+                    val json = JSONObject(rawBody)
+                    val performerObj = json.optJSONObject("data")?.optJSONObject("findPerformer")
+                    val imagesArray = performerObj?.optJSONArray("images")
+                    if (imagesArray != null) {
+                        for (i in 0 until imagesArray.length()) {
+                            val url = imagesArray.optJSONObject(i)?.optString("url")?.trim()
+                            if (!url.isNullOrBlank() && !resultList.contains(url)) {
+                                resultList.add(url)
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        if (resultList.isEmpty() && apiKey.isNotBlank() && performerName.isNotBlank()) {
+            try {
+                val searchRes = searchPerformers(performerName, apiKey).getOrNull()
+                val match = searchRes?.firstOrNull { it.id == stashDbId } ?: searchRes?.firstOrNull()
+                if (match != null && match.images.isNotEmpty()) {
+                    resultList.addAll(match.images)
+                }
+            } catch (_: Exception) {}
+        }
+
+        return@withContext resultList
     }
 
     suspend fun searchStudios(query: String, apiKey: String): Result<List<StashStudio>> = withContext(Dispatchers.IO) {
