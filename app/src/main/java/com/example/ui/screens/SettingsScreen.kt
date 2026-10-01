@@ -47,6 +47,7 @@ private enum class SettingsSection {
     PRIVACY,
     INTEGRATIONS,
     DATA_BACKUP,
+    ADVANCED,
     SAMPLE_DATA
 }
 
@@ -78,6 +79,7 @@ fun SettingsScreen(
             "PRIVACY" -> SettingsSection.PRIVACY
             "INTEGRATIONS" -> SettingsSection.INTEGRATIONS
             "DATA_BACKUP" -> SettingsSection.DATA_BACKUP
+            "ADVANCED" -> SettingsSection.ADVANCED
             "SAMPLE_DATA" -> SettingsSection.SAMPLE_DATA
             else -> SettingsSection.MAIN_MENU
         }
@@ -97,6 +99,7 @@ fun SettingsScreen(
         SettingsSection.PRIVACY -> "Privacy"
         SettingsSection.INTEGRATIONS -> "Integrations"
         SettingsSection.DATA_BACKUP -> "Data & Backup"
+        SettingsSection.ADVANCED -> "Advanced"
         SettingsSection.SAMPLE_DATA -> "Sample Data"
     }
 
@@ -200,10 +203,6 @@ fun SettingsScreen(
                         appIconStyle = currentSettings.appIconStyle,
                         onAppIconStyleChange = {
                             viewModel.updateSettings(currentSettings.copy(appIconStyle = it))
-                        },
-                        transitionStyle = currentSettings.transitionStyle,
-                        onTransitionStyleChange = {
-                            viewModel.updateSettings(currentSettings.copy(transitionStyle = it))
                         }
                     )
                 }
@@ -384,6 +383,19 @@ fun SettingsScreen(
                         onImportJson = { jsonStr -> viewModel.importJsonData(jsonStr) }
                     )
                 }
+                SettingsSection.ADVANCED -> {
+                    SettingsAdvancedSection(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = padding.calculateTopPadding())
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        enableVideoPlayerGestures = currentSettings.enableVideoPlayerGestures,
+                        onEnableVideoPlayerGesturesChange = {
+                            viewModel.updateSettings(currentSettings.copy(enableVideoPlayerGestures = it))
+                        }
+                    )
+                }
                 SettingsSection.SAMPLE_DATA -> {
                     SettingsSampleDataSection(
                         modifier = Modifier
@@ -457,11 +469,83 @@ private fun SettingsMainMenu(
         HorizontalDivider(modifier = Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
         SettingsPreferenceItem(
+            icon = Icons.Outlined.Tune,
+            title = "Advanced",
+            summary = "Video gestures, player controls & overlay settings",
+            onClick = { onNavigateTo(SettingsSection.ADVANCED) }
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+        SettingsPreferenceItem(
             icon = Icons.Outlined.Dataset,
             title = "Sample dataset",
             summary = "Load or clean removable demo data",
             onClick = { onNavigateTo(SettingsSection.SAMPLE_DATA) }
         )
+    }
+}
+
+@Composable
+private fun SettingsAdvancedSection(
+    modifier: Modifier = Modifier,
+    enableVideoPlayerGestures: Boolean,
+    onEnableVideoPlayerGesturesChange: (Boolean) -> Unit
+) {
+    val palette = LocalVaultPalette.current
+    val accent = LocalAccentColor.current
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "Player Gestures",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text(
+                            text = "Brightness & Volume Gestures",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = "Control volume and brightness by vertical swipes in the video overlay player. When turned off, vertical scrolling over the video passes through smoothly.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = enableVideoPlayerGestures,
+                        onCheckedChange = onEnableVideoPlayerGesturesChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = accent
+                        )
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -650,9 +734,7 @@ private fun SettingsDisplaySection(
     showCards: Boolean,
     onShowCardsChange: (Boolean) -> Unit,
     appIconStyle: Int,
-    onAppIconStyleChange: (Int) -> Unit,
-    transitionStyle: Int,
-    onTransitionStyleChange: (Int) -> Unit
+    onAppIconStyleChange: (Int) -> Unit
 ) {
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
@@ -683,194 +765,6 @@ private fun SettingsDisplaySection(
                     selectedTheme = themeName,
                     onSelectTheme = onThemeChange
                 )
-            }
-        }
-
-        // Screen Transition Animation Switcher
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Text(
-                    "Transition Animation",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                // Row 1: Motion & Native
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Option 0: Dynamic Motion (Current)
-                    val isOption0Selected = transitionStyle == 0
-                    Surface(
-                        onClick = { onTransitionStyleChange(0) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (isOption0Selected) accent.copy(alpha = 0.15f) else palette.cardBg,
-                        border = androidx.compose.foundation.BorderStroke(
-                            width = if (isOption0Selected) 2.dp else 1.dp,
-                            color = if (isOption0Selected) accent else palette.border
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Animation,
-                                contentDescription = null,
-                                tint = if (isOption0Selected) accent else palette.textSecondary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Text(
-                                text = "Dynamic Motion",
-                                fontSize = 12.5.sp,
-                                fontWeight = if (isOption0Selected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isOption0Selected) accent else palette.textPrimary,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Text(
-                                text = "Vertical Slide",
-                                fontSize = 10.sp,
-                                color = palette.textMuted,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-
-                    // Option 1: Native Simple & Smooth
-                    val isOption1Selected = transitionStyle == 1
-                    Surface(
-                        onClick = { onTransitionStyleChange(1) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (isOption1Selected) accent.copy(alpha = 0.15f) else palette.cardBg,
-                        border = androidx.compose.foundation.BorderStroke(
-                            width = if (isOption1Selected) 2.dp else 1.dp,
-                            color = if (isOption1Selected) accent else palette.border
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = if (isOption1Selected) accent else palette.textSecondary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Text(
-                                text = "Native Simple",
-                                fontSize = 12.5.sp,
-                                fontWeight = if (isOption1Selected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isOption1Selected) accent else palette.textPrimary,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Text(
-                                text = "Scale & Fade",
-                                fontSize = 10.sp,
-                                color = palette.textMuted,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-                }
-
-                // Row 2: Ultra Light Crossfade & Instant Off
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Option 2: Ultra Light Crossfade
-                    val isOption2Selected = transitionStyle == 2
-                    Surface(
-                        onClick = { onTransitionStyleChange(2) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (isOption2Selected) accent.copy(alpha = 0.15f) else palette.cardBg,
-                        border = androidx.compose.foundation.BorderStroke(
-                            width = if (isOption2Selected) 2.dp else 1.dp,
-                            color = if (isOption2Selected) accent else palette.border
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FlashOn,
-                                contentDescription = null,
-                                tint = if (isOption2Selected) accent else palette.textSecondary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Text(
-                                text = "Ultra Crossfade",
-                                fontSize = 12.5.sp,
-                                fontWeight = if (isOption2Selected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isOption2Selected) accent else palette.textPrimary,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Text(
-                                text = "Pure Fade 90ms",
-                                fontSize = 10.sp,
-                                color = palette.textMuted,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-
-                    // Option 3: Instant Off (None)
-                    val isOption3Selected = transitionStyle == 3
-                    Surface(
-                        onClick = { onTransitionStyleChange(3) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (isOption3Selected) accent.copy(alpha = 0.15f) else palette.cardBg,
-                        border = androidx.compose.foundation.BorderStroke(
-                            width = if (isOption3Selected) 2.dp else 1.dp,
-                            color = if (isOption3Selected) accent else palette.border
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Speed,
-                                contentDescription = null,
-                                tint = if (isOption3Selected) accent else palette.textSecondary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Text(
-                                text = "Instant (Off)",
-                                fontSize = 12.5.sp,
-                                fontWeight = if (isOption3Selected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isOption3Selected) accent else palette.textPrimary,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Text(
-                                text = "No Motion 0ms",
-                                fontSize = 10.sp,
-                                color = palette.textMuted,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-                }
             }
         }
 
@@ -944,11 +838,11 @@ fun switchAppIcon(context: android.content.Context, styleIndex: Int) {
     val packageName = context.packageName
 
     val aliases = listOf(
+        "com.example.MainActivityAliasInverted",
         "com.example.MainActivityAliasDefault",
         "com.example.MainActivityAliasBlue",
         "com.example.MainActivityAliasOrange",
-        "com.example.MainActivityAliasDark",
-        "com.example.MainActivityAliasInverted"
+        "com.example.MainActivityAliasDark"
     )
 
     for ((index, alias) in aliases.withIndex()) {
@@ -998,11 +892,11 @@ private fun IconStylePicker(
     val context = androidx.compose.ui.platform.LocalContext.current
     val accent = LocalAccentColor.current
     val options = listOf(
+        Triple("Inverted", Color(0xFFF3F4F6), Color.Black),
         Triple("Default", Color(0xFF58595e), Color.White),
         Triple("Blue", Color(0xFF3B82F6), Color.White),
         Triple("Orange", Color(0xFFD97706), Color.White),
-        Triple("Dark", Color(0xFF1F2937), Color.White),
-        Triple("Inverted", Color(0xFFF3F4F6), Color.Black)
+        Triple("Dark", Color(0xFF1F2937), Color.White)
     )
 
     Column(

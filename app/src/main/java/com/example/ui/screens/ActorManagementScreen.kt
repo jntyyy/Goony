@@ -62,7 +62,12 @@ fun ActorManagementScreen(
     var sortOption by remember { mutableStateOf(ManagementSortOption.NAME_AZ) }
     var showSortMenu by remember { mutableStateOf(false) }
 
-    val sortedActors = remember(actors, links, sortOption) {
+    // Precalculate scene counts once in O(Links) for O(1) instant lookup per actor item
+    val actorSceneCounts = remember(links) {
+        links.flatMap { it.actorIds }.groupingBy { it }.eachCount()
+    }
+
+    val sortedActors = remember(actors, sortOption) {
         when (sortOption) {
             ManagementSortOption.NAME_AZ -> actors.sortedBy { it.name.lowercase() }
             ManagementSortOption.NAME_ZA -> actors.sortedByDescending { it.name.lowercase() }
@@ -186,7 +191,7 @@ fun ActorManagementScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(sortedActors, key = { it.id }) { actor ->
-                    val sceneCount = links.count { it.actorIds.contains(actor.id) }
+                    val sceneCount = actorSceneCounts[actor.id] ?: 0
                     val itemContent = @Composable {
                         Column(
                             modifier = Modifier
@@ -199,7 +204,6 @@ fun ActorManagementScreen(
                             Surface(
                                 shape = CircleShape,
                                 color = palette.surface,
-                                shadowElevation = 3.dp,
                                 modifier = Modifier
                                     .size(72.dp)
                                     .clip(CircleShape)

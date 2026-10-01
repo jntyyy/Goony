@@ -67,6 +67,7 @@ fun HomeScreen(
     val videoResolutionError by viewModel.videoResolutionError.collectAsStateWithLifecycle()
     val activeInlineVideo by viewModel.activeInlineVideo.collectAsStateWithLifecycle()
     val currentScreen by viewModel.screenState.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
 
     val targetActor = remember(currentScreen, actors) {
         if (currentScreen is ScreenState.ActorScenes) {
@@ -551,7 +552,8 @@ fun HomeScreen(
                             onFullscreenInlineVideo = { currentPos ->
                                 viewModel.openFullscreenFromInline(link.id, currentPos)
                             },
-                            exoPlayer = viewModel.sharedPlayerManager.getPlayer()
+                            exoPlayer = viewModel.sharedPlayerManager.getPlayer(),
+                            enableVideoPlayerGestures = settings.enableVideoPlayerGestures
                         )
                     }
                 }

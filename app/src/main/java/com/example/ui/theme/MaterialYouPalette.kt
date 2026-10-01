@@ -52,7 +52,24 @@ object MaterialYouColorPresets {
             darkTertiary = Color(0xFFEFB8C8),
             darkContainer = Color(0xFF4F378B)
         ),
-        // 2. Catppuccin Mocha (Soothing Pastel Dark)
+        // 2. Tokyo Night (Downtown Neon & Deep Navy) - Default Preset
+        MaterialThemePalette(
+            id = "tokyo_night",
+            name = "Tokyo Night",
+            seedHex = "#7AA2F7",
+            previewTop = Color(0xFF1A1B26), // Storm Dark
+            previewBottomLeft = Color(0xFF7AA2F7), // Neon Blue
+            previewBottomRight = Color(0xFFBB9AF7), // Neon Purple
+            lightPrimary = Color(0xFF3D59A1),
+            lightSecondary = Color(0xFF7AA2F7),
+            lightTertiary = Color(0xFF9D7CD8),
+            lightContainer = Color(0xFFE6EDF3),
+            darkPrimary = Color(0xFF7AA2F7),
+            darkSecondary = Color(0xFFBB9AF7),
+            darkTertiary = Color(0xFF7DCFFF),
+            darkContainer = Color(0xFF24283B)
+        ),
+        // 3. Catppuccin Mocha (Soothing Pastel Dark)
         MaterialThemePalette(
             id = "catppuccin_mocha",
             name = "Catppuccin Mocha",
@@ -120,24 +137,7 @@ object MaterialYouColorPresets {
             darkTertiary = Color(0xFFB48EAD),
             darkContainer = Color(0xFF3B4252)
         ),
-        // 6. Tokyo Night (Downtown Neon & Deep Navy)
-        MaterialThemePalette(
-            id = "tokyo_night",
-            name = "Tokyo Night",
-            seedHex = "#7AA2F7",
-            previewTop = Color(0xFF1A1B26), // Storm Dark
-            previewBottomLeft = Color(0xFF7AA2F7), // Neon Blue
-            previewBottomRight = Color(0xFFBB9AF7), // Neon Purple
-            lightPrimary = Color(0xFF3D59A1),
-            lightSecondary = Color(0xFF7AA2F7),
-            lightTertiary = Color(0xFF9D7CD8),
-            lightContainer = Color(0xFFE6EDF3),
-            darkPrimary = Color(0xFF7AA2F7),
-            darkSecondary = Color(0xFFBB9AF7),
-            darkTertiary = Color(0xFF7DCFFF),
-            darkContainer = Color(0xFF24283B)
-        ),
-        // 7. Rosé Pine (Classy Soho Minimalist)
+        // 6. Rosé Pine (Classy Soho Minimalist)
         MaterialThemePalette(
             id = "rose_pine",
             name = "Rosé Pine",

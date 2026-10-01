@@ -59,6 +59,7 @@ fun BookmarksScreen(
     val resolvingCardId by viewModel.resolvingCardId.collectAsStateWithLifecycle()
     val videoResolutionError by viewModel.videoResolutionError.collectAsStateWithLifecycle()
     val activeInlineVideo by viewModel.activeInlineVideo.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
 
     val actorsMap = remember(actors) { actors.associate { it.id to it.name } }
     val fullActorsMap = remember(actors) { actors.associateBy { it.id } }
@@ -424,7 +425,8 @@ fun BookmarksScreen(
                             inlinePlayback = if (activeInlineVideo?.cardId == link.id) activeInlineVideo else null,
                             onCloseInlineVideo = { viewModel.closeInlineVideo(link.id) },
                             onFullscreenInlineVideo = { pos -> viewModel.openFullscreenFromInline(link.id, pos) },
-                            exoPlayer = if (activeInlineVideo?.cardId == link.id) viewModel.sharedPlayerManager.getPlayer() else null
+                            exoPlayer = if (activeInlineVideo?.cardId == link.id) viewModel.sharedPlayerManager.getPlayer() else null,
+                            enableVideoPlayerGestures = settings.enableVideoPlayerGestures
                         )
                     }
                 }

@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import com.example.data.local.entity.ActorEntity
 import com.example.data.local.entity.LinkEntity
 import com.example.data.local.entity.StudioEntity
@@ -101,6 +103,7 @@ fun LinkCard(
     onCloseInlineVideo: () -> Unit = {},
     onFullscreenInlineVideo: (positionMs: Long) -> Unit = {},
     exoPlayer: androidx.media3.exoplayer.ExoPlayer? = null,
+    enableVideoPlayerGestures: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -312,6 +315,7 @@ fun LinkCard(
                     subtitles = inlinePlayback.subtitles,
                     defaultHeaders = inlinePlayback.headers,
                     exoPlayer = exoPlayer,
+                    enableGestures = enableVideoPlayerGestures,
                     onClose = onCloseInlineVideo,
                     onFullscreen = onFullscreenInlineVideo,
                     modifier = Modifier.fillMaxSize()
@@ -744,7 +748,7 @@ fun LinkCard(
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 0.15.sp
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = Color(0xFF3B82F6),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier
@@ -773,9 +777,9 @@ fun LinkCard(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Person,
+                                            painter = painterResource(id = R.drawable.ic_user_group),
                                             contentDescription = "More Actors",
-                                            tint = accent,
+                                            tint = Color(0xFF3B82F6),
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }

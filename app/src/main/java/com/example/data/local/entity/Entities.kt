@@ -130,7 +130,7 @@ data class CoomerEntity(
 data class SettingsEntity(
     @PrimaryKey val id: Int = 1,
     val currentTheme: String = "Dark",
-    val accentColorHex: String = "#8B5CF6", // Violet accent
+    val accentColorHex: String = "tokyo_night", // Tokyo Night default
     val torboxApiKey: String = "",
     val realDebridApiKey: String = "HNR2RHUY4K6JYXNFJCB4QXAJ57TKDQKTQOPYEXZ2VANQO7TN5YJQ",
     val stashDbApiKey: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiIwMTlmYmRlYi00MDRlLTdjYmMtOTFhNy00YTA4MjhjMTQ5ZjQiLCJzdWIiOiJBUElLZXkiLCJpYXQiOjE3ODU1OTc3Mzl9.J9ojzjsBP8sBOLZNUACF94EWwren89ql8TDcW3gT7WY",
@@ -140,6 +140,7 @@ data class SettingsEntity(
     val defaultAspectRatio: String = "16:9",
     val showManagementCards: Boolean = true,
     val appIconStyle: Int = 0,
+    val enableVideoPlayerGestures: Boolean = true,
     val transitionStyle: Int = 0,
     val lastSyncTime: Long = 0L
 )

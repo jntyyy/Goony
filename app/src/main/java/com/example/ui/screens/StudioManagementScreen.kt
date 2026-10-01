@@ -54,7 +54,12 @@ fun StudioManagementScreen(
     var sortOption by remember { mutableStateOf(ManagementSortOption.NAME_AZ) }
     var showSortMenu by remember { mutableStateOf(false) }
 
-    val sortedStudios = remember(studios, links, sortOption) {
+    // Precalculate scene counts once in O(Links) for O(1) instant lookup per studio item
+    val studioSceneCounts = remember(links) {
+        links.flatMap { it.studioIds }.groupingBy { it }.eachCount()
+    }
+
+    val sortedStudios = remember(studios, sortOption) {
         when (sortOption) {
             ManagementSortOption.NAME_AZ -> studios.sortedBy { it.name.lowercase() }
             ManagementSortOption.NAME_ZA -> studios.sortedByDescending { it.name.lowercase() }
@@ -178,7 +183,7 @@ fun StudioManagementScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(sortedStudios, key = { it.id }) { studio ->
-                    val sceneCount = links.count { it.studioIds.contains(studio.id) }
+                    val sceneCount = studioSceneCounts[studio.id] ?: 0
                     val itemContent = @Composable {
                         Column(
                             modifier = Modifier

@@ -49,7 +49,7 @@ fun parseHexColor(hex: String, fallback: Color = Color(0xFF7C4DFF)): Color {
 @Composable
 fun GVJVaultTheme(
     paletteName: String = "Dark",
-    accentColorHex: String = MaterialYouColorPresets.SYSTEM_DYNAMIC_ID,
+    accentColorHex: String = "tokyo_night",
     betaTestPrivacy: Boolean = false,
     content: @Composable () -> Unit
 ) {

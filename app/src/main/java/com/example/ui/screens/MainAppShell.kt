@@ -53,7 +53,6 @@ fun MainAppShell(viewModel: MainViewModel) {
     val resolvingCardId by viewModel.resolvingCardId.collectAsStateWithLifecycle()
     val videoResolutionError by viewModel.videoResolutionError.collectAsStateWithLifecycle()
     val currentSettings by viewModel.settings.collectAsStateWithLifecycle()
-    val transitionStyle = currentSettings.transitionStyle
 
     // Smooth App Launch Entrance Animation (Matches Add Scene motion)
     var appEntranceVisible by remember { mutableStateOf(false) }
@@ -117,7 +116,7 @@ fun MainAppShell(viewModel: MainViewModel) {
                     NavigationDrawerItem(
                         icon = {
                             Icon(
-                                imageVector = if (isHomeSelected) Icons.Filled.Home else Icons.Outlined.Home,
+                                painter = painterResource(id = R.drawable.ic_nav_home),
                                 contentDescription = "Home",
                                 modifier = Modifier.size(22.dp)
                             )
@@ -139,37 +138,11 @@ fun MainAppShell(viewModel: MainViewModel) {
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
 
-                    val isBookmarksSelected = currentScreen is ScreenState.Bookmarks
-                    NavigationDrawerItem(
-                        icon = {
-                            Icon(
-                                imageVector = if (isBookmarksSelected) Icons.Filled.Bookmark else Icons.Outlined.Bookmark,
-                                contentDescription = "Bookmarks",
-                                modifier = Modifier.size(22.dp)
-                            )
-                        },
-                        label = { Text("Bookmarks", fontWeight = if (isBookmarksSelected) FontWeight.SemiBold else FontWeight.Normal) },
-                        selected = isBookmarksSelected,
-                        onClick = {
-                            viewModel.navigateTo(ScreenState.Bookmarks)
-                            coroutineScope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = accent.copy(alpha = 0.18f),
-                            selectedTextColor = accent,
-                            selectedIconColor = accent,
-                            unselectedTextColor = palette.textPrimary,
-                            unselectedIconColor = palette.textSecondary
-                        ),
-                        shape = CircleShape,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    )
-
                     val isActorsSelected = currentScreen is ScreenState.Actors || currentScreen is ScreenState.ActorScenes
                     NavigationDrawerItem(
                         icon = {
                             Icon(
-                                imageVector = if (isActorsSelected) Icons.Filled.RecentActors else Icons.Outlined.RecentActors,
+                                painter = painterResource(id = R.drawable.ic_nav_actor),
                                 contentDescription = "Actors",
                                 modifier = Modifier.size(22.dp)
                             )
@@ -195,7 +168,7 @@ fun MainAppShell(viewModel: MainViewModel) {
                     NavigationDrawerItem(
                         icon = {
                             Icon(
-                                imageVector = if (isStudiosSelected) Icons.Filled.MovieCreation else Icons.Outlined.MovieCreation,
+                                painter = painterResource(id = R.drawable.ic_nav_studio),
                                 contentDescription = "Studios",
                                 modifier = Modifier.size(22.dp)
                             )
@@ -217,19 +190,45 @@ fun MainAppShell(viewModel: MainViewModel) {
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
 
-                    val isHanimeSelected = currentScreen is ScreenState.Hanime || currentScreen is ScreenState.HanimeDetail
+                    val isBookmarksSelected = currentScreen is ScreenState.Bookmarks
                     NavigationDrawerItem(
                         icon = {
                             Icon(
-                                imageVector = if (isHanimeSelected) Icons.Filled.Animation else Icons.Outlined.Animation,
-                                contentDescription = "Hanime",
+                                painter = painterResource(id = R.drawable.ic_nav_bookmark),
+                                contentDescription = "Bookmarks",
                                 modifier = Modifier.size(22.dp)
                             )
                         },
-                        label = { Text("Hanime", fontWeight = if (isHanimeSelected) FontWeight.SemiBold else FontWeight.Normal) },
-                        selected = isHanimeSelected,
+                        label = { Text("Bookmarks", fontWeight = if (isBookmarksSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                        selected = isBookmarksSelected,
                         onClick = {
-                            viewModel.navigateTo(ScreenState.Hanime)
+                            viewModel.navigateTo(ScreenState.Bookmarks)
+                            coroutineScope.launch { drawerState.close() }
+                        },
+                        colors = NavigationDrawerItemDefaults.colors(
+                            selectedContainerColor = accent.copy(alpha = 0.18f),
+                            selectedTextColor = accent,
+                            selectedIconColor = accent,
+                            unselectedTextColor = palette.textPrimary,
+                            unselectedIconColor = palette.textSecondary
+                        ),
+                        shape = CircleShape,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
+
+                    val isStashDbSelected = currentScreen is ScreenState.StashDb
+                    NavigationDrawerItem(
+                        icon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_nav_stashdb),
+                                contentDescription = "StashDB",
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        label = { Text("StashDB", fontWeight = if (isStashDbSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                        selected = isStashDbSelected,
+                        onClick = {
+                            viewModel.navigateTo(ScreenState.StashDb)
                             coroutineScope.launch { drawerState.close() }
                         },
                         colors = NavigationDrawerItemDefaults.colors(
@@ -269,19 +268,19 @@ fun MainAppShell(viewModel: MainViewModel) {
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
 
-                    val isStashDbSelected = currentScreen is ScreenState.StashDb
+                    val isHanimeSelected = currentScreen is ScreenState.Hanime || currentScreen is ScreenState.HanimeDetail
                     NavigationDrawerItem(
                         icon = {
                             Icon(
-                                imageVector = if (isStashDbSelected) Icons.Filled.Inventory2 else Icons.Outlined.Inventory2,
-                                contentDescription = "StashDB",
+                                imageVector = if (isHanimeSelected) Icons.Filled.Animation else Icons.Outlined.Animation,
+                                contentDescription = "Hanime",
                                 modifier = Modifier.size(22.dp)
                             )
                         },
-                        label = { Text("StashDB", fontWeight = if (isStashDbSelected) FontWeight.SemiBold else FontWeight.Normal) },
-                        selected = isStashDbSelected,
+                        label = { Text("Hanime", fontWeight = if (isHanimeSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                        selected = isHanimeSelected,
                         onClick = {
-                            viewModel.navigateTo(ScreenState.StashDb)
+                            viewModel.navigateTo(ScreenState.Hanime)
                             coroutineScope.launch { drawerState.close() }
                         },
                         colors = NavigationDrawerItemDefaults.colors(
@@ -303,12 +302,12 @@ fun MainAppShell(viewModel: MainViewModel) {
                     NavigationDrawerItem(
                         icon = {
                             Icon(
-                                imageVector = if (isSettingsSelected) Icons.Filled.Settings else Icons.Outlined.Settings,
-                                contentDescription = "Settings & Sync",
+                                painter = painterResource(id = R.drawable.ic_nav_settings),
+                                contentDescription = "Settings",
                                 modifier = Modifier.size(22.dp)
                             )
                         },
-                        label = { Text("Settings & Sync", fontWeight = if (isSettingsSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                        label = { Text("Settings", fontWeight = if (isSettingsSelected) FontWeight.SemiBold else FontWeight.Normal) },
                         selected = isSettingsSelected,
                         onClick = {
                             viewModel.navigateTo(ScreenState.Settings)
@@ -342,51 +341,21 @@ fun MainAppShell(viewModel: MainViewModel) {
                         AnimatedContent(
                             targetState = currentScreen,
                             transitionSpec = {
-                                when (transitionStyle) {
-                                    3 -> {
-                                        // Option 3: Instant Off (0ms)
-                                        EnterTransition.None togetherWith ExitTransition.None
-                                    }
-                                    2 -> {
-                                        // Option 2: Ultra Crossfade (Pure 90ms Fade)
-                                        fadeIn(animationSpec = tween(90)) togetherWith fadeOut(animationSpec = tween(80))
-                                    }
-                                    1 -> {
-                                        // Option 1: Native Simple & Smooth (Fast Fade + Scale)
-                                        if (navDirection == MainViewModel.NavigationDirection.BACK) {
-                                            (fadeIn(animationSpec = tween(160, easing = LinearOutSlowInEasing)) +
-                                                    scaleIn(initialScale = 0.97f, animationSpec = tween(180, easing = FastOutSlowInEasing)))
-                                                .togetherWith(
-                                                    fadeOut(animationSpec = tween(140)) +
-                                                            scaleOut(targetScale = 1.02f, animationSpec = tween(160))
-                                                )
-                                        } else {
-                                            (fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) +
-                                                    scaleIn(initialScale = 0.97f, animationSpec = tween(200, easing = FastOutSlowInEasing)))
-                                                .togetherWith(
-                                                    fadeOut(animationSpec = tween(140)) +
-                                                            scaleOut(targetScale = 1.02f, animationSpec = tween(160))
-                                                )
-                                        }
-                                    }
-                                    else -> {
-                                        // Option 0: Dynamic Motion (Current vertical slide motion)
-                                        if (navDirection == MainViewModel.NavigationDirection.BACK) {
-                                            (slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
-                                                    fadeIn(animationSpec = tween(240)))
-                                                .togetherWith(
-                                                    slideOutVertically(animationSpec = tween(300, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
-                                                            fadeOut(animationSpec = tween(240))
-                                                )
-                                        } else {
-                                            (slideInVertically(animationSpec = tween(320, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
-                                                    fadeIn(animationSpec = tween(280)))
-                                                .togetherWith(
-                                                    slideOutVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
-                                                            fadeOut(animationSpec = tween(220))
-                                                )
-                                        }
-                                    }
+                                // Dynamic Motion (Vertical Slide) Default Transition
+                                if (navDirection == MainViewModel.NavigationDirection.BACK) {
+                                    (slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
+                                            fadeIn(animationSpec = tween(240)))
+                                        .togetherWith(
+                                            slideOutVertically(animationSpec = tween(300, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
+                                                    fadeOut(animationSpec = tween(240))
+                                        )
+                                } else {
+                                    (slideInVertically(animationSpec = tween(320, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
+                                            fadeIn(animationSpec = tween(280)))
+                                        .togetherWith(
+                                            slideOutVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
+                                                    fadeOut(animationSpec = tween(220))
+                                        )
                                 }
                             },
                             label = "screen_motion_transition"

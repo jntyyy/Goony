@@ -18,7 +18,7 @@ import com.example.data.local.entity.*
         CoomerEntity::class,
         SettingsEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -34,6 +34,12 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        private val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN enableVideoPlayerGestures INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -41,7 +47,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "gvj_vault_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(MIGRATION_6_7)
+                    .fallbackToDestructiveMigration(true)
                     .build()
                 INSTANCE = instance
                 instance

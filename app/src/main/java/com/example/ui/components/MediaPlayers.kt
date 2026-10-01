@@ -1419,6 +1419,7 @@ fun InlineCardPlayer(
     subtitles: List<SubtitleTrack> = emptyList(),
     defaultHeaders: Map<String, String> = emptyMap(),
     exoPlayer: ExoPlayer? = null,
+    enableGestures: Boolean = true,
     onClose: () -> Unit,
     onFullscreen: (currentPositionMs: Long) -> Unit,
     modifier: Modifier = Modifier
@@ -1657,7 +1658,7 @@ fun InlineCardPlayer(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(duration) {
+            .pointerInput(duration, enableGestures) {
                 var lastTapTime = 0L
                 var lastTapPos = androidx.compose.ui.geometry.Offset.Zero
 
@@ -1692,11 +1693,11 @@ fun InlineCardPlayer(
 
                             if (gestureType == 0) {
                                 val touchSlop = 12f
-                                if (absDx > touchSlop || absDy > 32f) {
+                                if (absDx > touchSlop || (enableGestures && absDy > 32f)) {
                                     hasMoved = true
                                     gestureType = if (absDx > absDy) {
                                         1 // Horizontal Seek
-                                    } else if (absDy > absDx * 1.3f) {
+                                    } else if (enableGestures && absDy > absDx * 1.3f) {
                                         if (isLeftSide) 2 else 3 // 2: Volume, 3: Brightness
                                     } else {
                                         0
@@ -1704,6 +1705,9 @@ fun InlineCardPlayer(
                                     if (gestureType == 2 || gestureType == 3) {
                                         showControls = false
                                     }
+                                } else if (!enableGestures && absDy > touchSlop && absDy > absDx * 1.2f) {
+                                    // Gestures disabled: Pass through vertical scrolls smoothly
+                                    break
                                 }
                             }
 
@@ -1717,7 +1721,7 @@ fun InlineCardPlayer(
                                 currentSeekTargetMs = targetMs
                                 currentPos = targetMs
                                 lastSeekTime = System.currentTimeMillis()
-                            } else if (gestureType == 2) {
+                            } else if (gestureType == 2 && enableGestures) {
                                 // Volume Gesture
                                 change.consume()
                                 showControls = false
@@ -1729,7 +1733,7 @@ fun InlineCardPlayer(
                                 val percent = if (maxAudioVolume > 0) ((newVolume.toFloat() / maxAudioVolume) * 100).toInt() else 0
                                 gestureVolumePercent = percent
                                 volumeHideJob?.cancel()
-                            } else if (gestureType == 3) {
+                            } else if (gestureType == 3 && enableGestures) {
                                 // Brightness Gesture
                                 change.consume()
                                 showControls = false
