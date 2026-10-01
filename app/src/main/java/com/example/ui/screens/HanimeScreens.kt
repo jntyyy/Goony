@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +57,20 @@ fun HanimeManagementScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var isScraping by remember { mutableStateOf(false) }
 
+    val scrollKey = "feed_hanime"
+    val initialScroll = remember { viewModel.getScrollPosition(scrollKey) }
+    val gridState = rememberLazyGridState(
+        initialFirstVisibleItemIndex = initialScroll.first,
+        initialFirstVisibleItemScrollOffset = initialScroll.second
+    )
+
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                viewModel.saveScrollPosition(scrollKey, index, offset)
+            }
+    }
+
     Scaffold(
         containerColor = palette.bg,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -94,6 +109,7 @@ fun HanimeManagementScreen(
             }
         } else {
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(
                     top = padding.calculateTopPadding() + 16.dp,

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -126,35 +127,42 @@ fun HomeScreen(
     var showEditActorDialog by remember { mutableStateOf(false) }
     var showEditStudioDialog by remember { mutableStateOf(false) }
 
+    val scrollKey = remember(currentScreen, targetActor?.id, targetStudio?.id) {
+        when {
+            targetActor != null -> "actor_scenes_${targetActor.id}"
+            targetStudio != null -> "studio_scenes_${targetStudio.id}"
+            currentScreen is ScreenState.ActorScenes -> "actor_scenes_${(currentScreen as ScreenState.ActorScenes).actorId}"
+            currentScreen is ScreenState.StudioScenes -> "studio_scenes_${(currentScreen as ScreenState.StudioScenes).studioId}"
+            else -> "feed_home"
+        }
+    }
+
+    val initialScroll = remember(scrollKey) { viewModel.getScrollPosition(scrollKey) }
+
     val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = viewModel.homeScrollIndex,
-        initialFirstVisibleItemScrollOffset = viewModel.homeScrollOffset
+        initialFirstVisibleItemIndex = initialScroll.first,
+        initialFirstVisibleItemScrollOffset = initialScroll.second
     )
 
-    // Continuously remember the user's exact scroll position in ViewModel
-    LaunchedEffect(listState) {
+    // Continuously remember the user's exact scroll position in ViewModel for this specific screen/feed
+    LaunchedEffect(listState, scrollKey) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .collect { (index, offset) ->
-                viewModel.homeScrollIndex = index
-                viewModel.homeScrollOffset = offset
+                viewModel.saveScrollPosition(scrollKey, index, offset)
             }
     }
 
     // Scroll to top only when the user deliberately modifies sort, filter, or search query
-    var isInitialComposition by remember { mutableStateOf(true) }
-    var previousSort by remember { mutableStateOf(currentSort) }
-    var previousFilter by remember { mutableStateOf(viewFilter) }
-    var previousQuery by remember { mutableStateOf(searchQuery) }
+    var previousSort by rememberSaveable { mutableStateOf(currentSort.name) }
+    var previousFilter by rememberSaveable { mutableStateOf(viewFilter) }
+    var previousQuery by rememberSaveable { mutableStateOf(searchQuery) }
 
-    LaunchedEffect(currentSort, viewFilter, searchQuery) {
-        if (isInitialComposition) {
-            isInitialComposition = false
-        } else if (previousSort != currentSort || previousFilter != viewFilter || previousQuery != searchQuery) {
-            previousSort = currentSort
+    LaunchedEffect(currentSort, viewFilter, searchQuery, scrollKey) {
+        if (previousSort != currentSort.name || previousFilter != viewFilter || previousQuery != searchQuery) {
+            previousSort = currentSort.name
             previousFilter = viewFilter
             previousQuery = searchQuery
-            viewModel.homeScrollIndex = 0
-            viewModel.homeScrollOffset = 0
+            viewModel.saveScrollPosition(scrollKey, 0, 0)
             if (links.isNotEmpty()) {
                 listState.scrollToItem(0)
             }

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,11 +72,24 @@ fun BookmarksScreen(
     var showSortMenu by remember { mutableStateOf(false) }
     var activeOverlayCardId by remember { mutableStateOf<String?>(null) }
 
-    val listState = rememberLazyListState()
+    val scrollKey = "feed_bookmarks"
+    val initialScroll = remember { viewModel.getScrollPosition(scrollKey) }
 
-    var isInitialComposition by remember { mutableStateOf(true) }
-    var previousSort by remember { mutableStateOf(currentSort) }
-    var previousQuery by remember { mutableStateOf(searchQuery) }
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialScroll.first,
+        initialFirstVisibleItemScrollOffset = initialScroll.second
+    )
+
+    // Continuously remember the user's exact scroll position in ViewModel
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                viewModel.saveScrollPosition(scrollKey, index, offset)
+            }
+    }
+
+    var previousSort by rememberSaveable { mutableStateOf(currentSort.name) }
+    var previousQuery by rememberSaveable { mutableStateOf(searchQuery) }
 
     val bookmarkedLinks = remember(allLinks, bookmarkedIds, searchQuery, currentSort) {
         val bookmarked = allLinks.filter { bookmarkedIds.contains(it.id) }
@@ -103,11 +117,10 @@ fun BookmarksScreen(
     }
 
     LaunchedEffect(currentSort, searchQuery) {
-        if (isInitialComposition) {
-            isInitialComposition = false
-        } else if (previousSort != currentSort || previousQuery != searchQuery) {
-            previousSort = currentSort
+        if (previousSort != currentSort.name || previousQuery != searchQuery) {
+            previousSort = currentSort.name
             previousQuery = searchQuery
+            viewModel.saveScrollPosition(scrollKey, 0, 0)
             if (bookmarkedLinks.isNotEmpty()) {
                 listState.scrollToItem(0)
             }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -67,6 +69,29 @@ fun ActorManagementScreen(
     var actorToEdit by remember { mutableStateOf<ActorEntity?>(null) }
     var sortOption by remember { mutableStateOf(ManagementSortOption.NAME_AZ) }
     var showSortMenu by remember { mutableStateOf(false) }
+
+    val scrollKey = "management_actors"
+    val initialScroll = remember { viewModel.getScrollPosition(scrollKey) }
+    val gridState = rememberLazyGridState(
+        initialFirstVisibleItemIndex = initialScroll.first,
+        initialFirstVisibleItemScrollOffset = initialScroll.second
+    )
+
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                viewModel.saveScrollPosition(scrollKey, index, offset)
+            }
+    }
+
+    var previousSort by rememberSaveable { mutableStateOf(sortOption.name) }
+    LaunchedEffect(sortOption) {
+        if (previousSort != sortOption.name) {
+            previousSort = sortOption.name
+            viewModel.saveScrollPosition(scrollKey, 0, 0)
+            gridState.scrollToItem(0)
+        }
+    }
 
     // Precalculate scene counts once in O(Links) for O(1) instant lookup per actor item
     val actorSceneCounts = remember(links) {
@@ -189,6 +214,7 @@ fun ActorManagementScreen(
             }
         } else {
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Fixed(3),
                 contentPadding = PaddingValues(
                     top = padding.calculateTopPadding() + 16.dp,

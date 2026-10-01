@@ -137,9 +137,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val screenStack = mutableListOf<ScreenState>(ScreenState.Home)
 
-    // Home Feed Scroll Position Memory
-    var homeScrollIndex: Int = 0
-    var homeScrollOffset: Int = 0
+    // Comprehensive Multi-Key Scroll Position Memory Registry
+    private val scrollPositionRegistry = mutableMapOf<String, Pair<Int, Int>>()
+
+    fun saveScrollPosition(key: String, index: Int, offset: Int) {
+        scrollPositionRegistry[key] = Pair(index, offset)
+    }
+
+    fun getScrollPosition(key: String): Pair<Int, Int> {
+        return scrollPositionRegistry[key] ?: Pair(0, 0)
+    }
+
+    fun clearScrollPosition(key: String) {
+        scrollPositionRegistry.remove(key)
+    }
+
+    // Home Feed Scroll Position Memory Proxies for complete backward compatibility
+    var homeScrollIndex: Int
+        get() = getScrollPosition("feed_home").first
+        set(value) {
+            val currentOffset = getScrollPosition("feed_home").second
+            saveScrollPosition("feed_home", value, currentOffset)
+        }
+
+    var homeScrollOffset: Int
+        get() = getScrollPosition("feed_home").second
+        set(value) {
+            val currentIndex = getScrollPosition("feed_home").first
+            saveScrollPosition("feed_home", currentIndex, value)
+        }
+
     var initialSettingsSection: String? = null
 
     fun navigateTo(screen: ScreenState) {

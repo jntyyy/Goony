@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -60,6 +61,20 @@ fun CoomerManagementScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var isScraping by remember { mutableStateOf(false) }
 
+    val scrollKey = "feed_coomers"
+    val initialScroll = remember { viewModel.getScrollPosition(scrollKey) }
+    val gridState = rememberLazyGridState(
+        initialFirstVisibleItemIndex = initialScroll.first,
+        initialFirstVisibleItemScrollOffset = initialScroll.second
+    )
+
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                viewModel.saveScrollPosition(scrollKey, index, offset)
+            }
+    }
+
     Scaffold(
         containerColor = palette.bg,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -98,6 +113,7 @@ fun CoomerManagementScreen(
             }
         } else {
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(
                     top = padding.calculateTopPadding() + 16.dp,
