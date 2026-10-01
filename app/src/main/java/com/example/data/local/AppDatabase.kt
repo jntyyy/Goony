@@ -14,11 +14,9 @@ import com.example.data.local.entity.*
         LinkEntity::class,
         ActorEntity::class,
         StudioEntity::class,
-        HanimeEntity::class,
-        CoomerEntity::class,
         SettingsEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -26,8 +24,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun linkDao(): LinkDao
     abstract fun actorDao(): ActorDao
     abstract fun studioDao(): StudioDao
-    abstract fun hanimeDao(): HanimeDao
-    abstract fun coomerDao(): CoomerDao
     abstract fun settingsDao(): SettingsDao
 
     companion object {

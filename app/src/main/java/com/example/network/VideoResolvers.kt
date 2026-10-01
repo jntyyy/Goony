@@ -155,48 +155,7 @@ object VideoResolvers {
         )
     }
 
-    // 3. Hanime Resolver
-    suspend fun resolveHanime(hstreamUrl: String): ResolvedVideo {
-        var title = "Hanime Episode"
-        val qualities = mutableListOf<StreamQuality>()
-        val subtitles = mutableListOf<SubtitleTrack>()
-
-        val hanimeHeaders = mapOf(
-            "User-Agent" to DEFAULT_BROWSER_UA,
-            "Referer" to "https://hstream.moe/"
-        )
-
-        try {
-            val html = NetworkClient.getHtml(hstreamUrl, hanimeHeaders)
-            val titleMatch = Pattern.compile("<h1[^>]*>(.*?)</h1>", Pattern.CASE_INSENSITIVE).matcher(html)
-            if (titleMatch.find()) {
-                title = titleMatch.group(1)?.trim() ?: title
-            }
-
-            val matchEp = Pattern.compile("hstream\\.moe/watch/([^/]+)").matcher(hstreamUrl)
-            val slug = if (matchEp.find()) matchEp.group(1) else ""
-
-            if (slug.isNotEmpty()) {
-                qualities.add(StreamQuality("4K 48fps (DASH)", "https://hstream.moe/manifest/$slug/2160p48.mpd", "DASH", headers = hanimeHeaders))
-                qualities.add(StreamQuality("4K AV1 (DASH)", "https://hstream.moe/manifest/$slug/2160p.mpd", "DASH", headers = hanimeHeaders))
-                qualities.add(StreamQuality("1080p 48fps (DASH)", "https://hstream.moe/manifest/$slug/1080p48.mpd", "DASH", headers = hanimeHeaders))
-                qualities.add(StreamQuality("1080p (DASH)", "https://hstream.moe/manifest/$slug/1080p.mpd", "DASH", isDefault = true, headers = hanimeHeaders))
-                qualities.add(StreamQuality("720p (DASH)", "https://hstream.moe/manifest/$slug/720p.mpd", "DASH", headers = hanimeHeaders))
-
-                subtitles.add(SubtitleTrack("en", "English", "https://hstream.moe/subtitles/$slug/en.vtt"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Hanime resolver error", e)
-        }
-
-        if (qualities.isEmpty()) {
-            qualities.add(StreamQuality("Default", hstreamUrl, "MP4", true, headers = hanimeHeaders))
-        }
-
-        return ResolvedVideo(title = title, qualities = qualities, subtitles = subtitles, headers = hanimeHeaders)
-    }
-
-    // 4. Debrid Resolver (Torbox & Real-Debrid)
+    // 3. Debrid Resolver (Torbox & Real-Debrid)
     suspend fun resolveDebrid(
         magnetOrHash: String,
         torboxApiKey: String,
@@ -251,9 +210,6 @@ object VideoResolvers {
             }
             decoded.contains("pornhub.com", ignoreCase = true) -> {
                 resolvePornhub(decoded)
-            }
-            decoded.contains("hstream.moe", ignoreCase = true) || decoded.contains("hanime.tv", ignoreCase = true) -> {
-                resolveHanime(decoded)
             }
             decoded.contains(".mpd", ignoreCase = true) -> {
                 ResolvedVideo("DASH Stream", listOf(StreamQuality("DASH 1080p", decoded, "DASH", true)))

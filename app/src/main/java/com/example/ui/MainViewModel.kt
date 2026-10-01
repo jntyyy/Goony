@@ -48,12 +48,6 @@ sealed class ScreenState {
     object Studios : ScreenState()
     data class AddEditStudio(val studioId: String? = null) : ScreenState()
     data class StudioScenes(val studioId: String) : ScreenState()
-    object Coomers : ScreenState()
-    data class AddEditCoomer(val coomerId: String? = null) : ScreenState()
-    data class CoomerDetail(val coomerId: String) : ScreenState()
-    object Hanime : ScreenState()
-    data class AddEditHanime(val hanimeId: String? = null) : ScreenState()
-    data class HanimeDetail(val hanimeId: String) : ScreenState()
     data class PhotosetViewer(val title: String, val images: List<String>, val initialIndex: Int = 0) : ScreenState()
     object StashDb : ScreenState()
     object Settings : ScreenState()
@@ -857,8 +851,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val allLinks = repository.allLinks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val allActors = repository.allActors.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val allStudios = repository.allStudios.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val allHanime = repository.allHanime.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val allCoomers = repository.allCoomers.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private val _settingsState = MutableStateFlow<SettingsEntity?>(null)
     val settings: StateFlow<SettingsEntity> = repository.settings
         .map { it ?: SettingsEntity() }
@@ -985,30 +977,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 repository.deleteStudioById(studioId)
             }
-        }
-    }
-
-    fun saveHanime(hanime: HanimeEntity) {
-        viewModelScope.launch {
-            repository.insertHanime(hanime)
-        }
-    }
-
-    fun deleteHanime(id: String) {
-        viewModelScope.launch {
-            repository.deleteHanimeById(id)
-        }
-    }
-
-    fun saveCoomer(coomer: CoomerEntity) {
-        viewModelScope.launch {
-            repository.insertCoomer(coomer)
-        }
-    }
-
-    fun deleteCoomer(id: String) {
-        viewModelScope.launch {
-            repository.deleteCoomerById(id)
         }
     }
 

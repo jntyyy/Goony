@@ -308,12 +308,12 @@ fun StashDbScreen(
                         }
                     } else {
                         IconButton(
-                            onClick = onOpenDrawer,
-                            modifier = Modifier.testTag("drawer_button")
+                            onClick = { viewModel.navigateTo(ScreenState.Home) },
+                            modifier = Modifier.testTag("back_button")
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_app_menu),
-                                contentDescription = "Open Drawer",
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back to Home",
                                 tint = palette.textPrimary
                             )
                         }
@@ -701,7 +701,7 @@ fun StashDbScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp),
                                     colors = CardDefaults.cardColors(containerColor = palette.surface),
-                                    border = null
+                                    border = BorderStroke(0.6.dp, palette.border.copy(alpha = 0.18f))
                                 ) {
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         // 16:9 Cover Skeleton
@@ -711,38 +711,48 @@ fun StashDbScreen(
                                                 .aspectRatio(16f / 9f)
                                                 .adaptiveSkeleton(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                                         )
-                                        // Title & metadata skeleton container
+                                        // Title & metadata skeleton container matching exact StashGridPhotoCard layout
                                         Column(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(10.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(5.dp)
                                         ) {
                                             Box(
                                                 modifier = Modifier
-                                                    .fillMaxWidth(0.85f)
+                                                    .fillMaxWidth(0.82f)
                                                     .height(13.dp)
                                                     .adaptiveSkeleton(RoundedCornerShape(4.dp))
                                             )
-                                            HorizontalDivider(color = palette.border.copy(alpha = 0.5f))
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth(0.6f)
-                                                    .height(10.dp)
-                                                    .adaptiveSkeleton(RoundedCornerShape(4.dp))
+                                            HorizontalDivider(
+                                                color = palette.border.copy(alpha = 0.35f),
+                                                thickness = 0.5.dp,
+                                                modifier = Modifier.padding(vertical = 1.dp)
                                             )
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth(0.45f)
-                                                    .height(10.dp)
-                                                    .adaptiveSkeleton(RoundedCornerShape(4.dp))
-                                            )
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth(0.35f)
-                                                    .height(10.dp)
-                                                    .adaptiveSkeleton(RoundedCornerShape(4.dp))
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Box(modifier = Modifier.size(13.dp).adaptiveSkeleton(CircleShape))
+                                                Box(modifier = Modifier.fillMaxWidth(0.65f).height(10.dp).adaptiveSkeleton(RoundedCornerShape(3.dp)))
+                                            }
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Box(modifier = Modifier.size(13.dp).adaptiveSkeleton(CircleShape))
+                                                Box(modifier = Modifier.fillMaxWidth(0.50f).height(10.dp).adaptiveSkeleton(RoundedCornerShape(3.dp)))
+                                            }
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Box(modifier = Modifier.size(13.dp).adaptiveSkeleton(CircleShape))
+                                                Box(modifier = Modifier.fillMaxWidth(0.38f).height(10.dp).adaptiveSkeleton(RoundedCornerShape(3.dp)))
+                                            }
                                         }
                                     }
                                 }

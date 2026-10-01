@@ -80,54 +80,6 @@ interface StudioDao {
 }
 
 @Dao
-interface HanimeDao {
-    @Query("SELECT * FROM hanime ORDER BY createdAt DESC")
-    fun getAllHanime(): Flow<List<HanimeEntity>>
-
-    @Query("SELECT * FROM hanime WHERE id = :id")
-    suspend fun getHanimeById(id: String): HanimeEntity?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertHanime(hanime: HanimeEntity)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertHanimes(hanimes: List<HanimeEntity>)
-
-    @Update
-    suspend fun updateHanime(hanime: HanimeEntity)
-
-    @Query("DELETE FROM hanime WHERE id = :id")
-    suspend fun deleteHanimeById(id: String)
-
-    @Query("DELETE FROM hanime")
-    suspend fun deleteAllHanimes()
-}
-
-@Dao
-interface CoomerDao {
-    @Query("SELECT * FROM coomers ORDER BY name ASC")
-    fun getAllCoomers(): Flow<List<CoomerEntity>>
-
-    @Query("SELECT * FROM coomers WHERE id = :id")
-    suspend fun getCoomerById(id: String): CoomerEntity?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCoomer(coomer: CoomerEntity)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCoomers(coomers: List<CoomerEntity>)
-
-    @Update
-    suspend fun updateCoomer(coomer: CoomerEntity)
-
-    @Query("DELETE FROM coomers WHERE id = :id")
-    suspend fun deleteCoomerById(id: String)
-
-    @Query("DELETE FROM coomers")
-    suspend fun deleteAllCoomers()
-}
-
-@Dao
 interface SettingsDao {
     @Query("SELECT * FROM app_settings WHERE id = 1")
     fun getSettings(): Flow<SettingsEntity?>

@@ -243,58 +243,6 @@ fun MainAppShell(viewModel: MainViewModel) {
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
 
-                    val isCoomersSelected = currentScreen is ScreenState.Coomers || currentScreen is ScreenState.CoomerDetail
-                    NavigationDrawerItem(
-                        icon = {
-                            Icon(
-                                imageVector = if (isCoomersSelected) Icons.Filled.Subscriptions else Icons.Outlined.Subscriptions,
-                                contentDescription = "OnlyHaven",
-                                modifier = Modifier.size(22.dp)
-                            )
-                        },
-                        label = { Text("OnlyHaven", fontWeight = if (isCoomersSelected) FontWeight.SemiBold else FontWeight.Normal) },
-                        selected = isCoomersSelected,
-                        onClick = {
-                            viewModel.navigateTo(ScreenState.Coomers)
-                            coroutineScope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = accent.copy(alpha = 0.18f),
-                            selectedTextColor = accent,
-                            selectedIconColor = accent,
-                            unselectedTextColor = palette.textPrimary,
-                            unselectedIconColor = palette.textSecondary
-                        ),
-                        shape = CircleShape,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    )
-
-                    val isHanimeSelected = currentScreen is ScreenState.Hanime || currentScreen is ScreenState.HanimeDetail
-                    NavigationDrawerItem(
-                        icon = {
-                            Icon(
-                                imageVector = if (isHanimeSelected) Icons.Filled.Animation else Icons.Outlined.Animation,
-                                contentDescription = "Hanime",
-                                modifier = Modifier.size(22.dp)
-                            )
-                        },
-                        label = { Text("Hanime", fontWeight = if (isHanimeSelected) FontWeight.SemiBold else FontWeight.Normal) },
-                        selected = isHanimeSelected,
-                        onClick = {
-                            viewModel.navigateTo(ScreenState.Hanime)
-                            coroutineScope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = accent.copy(alpha = 0.18f),
-                            selectedTextColor = accent,
-                            selectedIconColor = accent,
-                            unselectedTextColor = palette.textPrimary,
-                            unselectedIconColor = palette.textSecondary
-                        ),
-                        shape = CircleShape,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    )
-
                     Spacer(modifier = Modifier.weight(1f))
                     HorizontalDivider(color = palette.border)
                     Spacer(modifier = Modifier.height(12.dp))
@@ -422,31 +370,25 @@ fun MainAppShell(viewModel: MainViewModel) {
                             )
                             is ScreenState.Bookmarks -> BookmarksScreen(
                                 viewModel = viewModel,
-                                onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                                onOpenDrawer = {}
                             )
                             is ScreenState.AddEditLink -> AddEditLinkScreen(viewModel, screen.linkId)
                             is ScreenState.Actors -> ActorManagementScreen(viewModel)
                             is ScreenState.AddEditActor -> ActorManagementScreen(viewModel)
                             is ScreenState.ActorScenes -> HomeScreen(
                                 viewModel = viewModel,
-                                onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                                onOpenDrawer = {}
                             )
                             is ScreenState.Studios -> StudioManagementScreen(viewModel)
                             is ScreenState.AddEditStudio -> StudioManagementScreen(viewModel)
                             is ScreenState.StudioScenes -> HomeScreen(
                                 viewModel = viewModel,
-                                onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                                onOpenDrawer = {}
                             )
-                            is ScreenState.Coomers -> CoomerManagementScreen(viewModel)
-                            is ScreenState.AddEditCoomer -> CoomerManagementScreen(viewModel)
-                            is ScreenState.CoomerDetail -> CoomerDetailScreen(viewModel, screen.coomerId)
-                            is ScreenState.Hanime -> HanimeManagementScreen(viewModel)
-                            is ScreenState.AddEditHanime -> HanimeManagementScreen(viewModel)
-                            is ScreenState.HanimeDetail -> HanimeDetailScreen(viewModel, screen.hanimeId)
                             is ScreenState.PhotosetViewer -> PhotosetViewerScreen(viewModel, screen.title, screen.images, screen.initialIndex)
                             is ScreenState.StashDb -> StashDbScreen(
                                 viewModel = viewModel,
-                                onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                                onOpenDrawer = {}
                             )
                             is ScreenState.Settings -> SettingsScreen(viewModel)
                         }

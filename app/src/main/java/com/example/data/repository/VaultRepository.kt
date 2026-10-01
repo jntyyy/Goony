@@ -35,24 +35,6 @@ class VaultRepository(private val db: AppDatabase) {
     suspend fun deleteStudioById(id: String) = db.studioDao().deleteStudioById(id)
     suspend fun deleteAllStudios() = db.studioDao().deleteAllStudios()
 
-    // Hanime
-    val allHanime: Flow<List<HanimeEntity>> = db.hanimeDao().getAllHanime()
-    suspend fun getHanimeById(id: String): HanimeEntity? = db.hanimeDao().getHanimeById(id)
-    suspend fun insertHanime(hanime: HanimeEntity) = db.hanimeDao().insertHanime(hanime)
-    suspend fun insertHanimes(hanimes: List<HanimeEntity>) = db.hanimeDao().insertHanimes(hanimes)
-    suspend fun updateHanime(hanime: HanimeEntity) = db.hanimeDao().updateHanime(hanime)
-    suspend fun deleteHanimeById(id: String) = db.hanimeDao().deleteHanimeById(id)
-    suspend fun deleteAllHanimes() = db.hanimeDao().deleteAllHanimes()
-
-    // Coomers
-    val allCoomers: Flow<List<CoomerEntity>> = db.coomerDao().getAllCoomers()
-    suspend fun getCoomerById(id: String): CoomerEntity? = db.coomerDao().getCoomerById(id)
-    suspend fun insertCoomer(coomer: CoomerEntity) = db.coomerDao().insertCoomer(coomer)
-    suspend fun insertCoomers(coomers: List<CoomerEntity>) = db.coomerDao().insertCoomers(coomers)
-    suspend fun updateCoomer(coomer: CoomerEntity) = db.coomerDao().updateCoomer(coomer)
-    suspend fun deleteCoomerById(id: String) = db.coomerDao().deleteCoomerById(id)
-    suspend fun deleteAllCoomers() = db.coomerDao().deleteAllCoomers()
-
     // Settings
     val settings: Flow<SettingsEntity?> = db.settingsDao().getSettings()
     suspend fun getSettingsOnce(): SettingsEntity = db.settingsDao().getSettingsOnce() ?: SettingsEntity()

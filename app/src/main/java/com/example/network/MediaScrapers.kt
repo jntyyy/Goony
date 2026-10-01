@@ -1,8 +1,6 @@
 package com.example.network
 
 import android.util.Log
-import com.example.data.local.entity.CoomerPostData
-import com.example.data.local.entity.HanimeEpisodeData
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -17,13 +15,13 @@ data class ScrapedGalleryResult(
     val images: List<String>
 )
 
-data class ScrapedHanimeResult(
-    val title: String,
-    val coverImage: String,
-    val description: String,
-    val censorship: String,
-    val episodes: List<HanimeEpisodeData>,
-    val secondaryCovers: List<String>
+data class CoomerPostData(
+    val id: String,
+    val urls: List<String>,
+    val thumbUrls: List<String>,
+    val caption: String? = null,
+    val mediaTypes: List<String> = emptyList(),
+    val sourceService: String = "OnlyFans"
 )
 
 data class ScrapedCreatorResult(
@@ -148,57 +146,7 @@ object MediaScrapers {
         return ScrapedCreatorResult(name = name, avatarUrl = avatarUrl, posts = posts, service = service)
     }
 
-    // 3. Hanime Series Scraper
-    suspend fun scrapeHanimeSeries(url: String): ScrapedHanimeResult {
-        var title = "Hanime Series"
-        var cover = ""
-        var desc = ""
-        var censorship = "UNCENSORED"
-        val episodes = mutableListOf<HanimeEpisodeData>()
-        val secondaryCovers = mutableListOf<String>()
-
-        try {
-            val html = NetworkClient.getHtml(url)
-            val doc = Jsoup.parse(html)
-            title = doc.select("h1").text().ifEmpty { "Hanime Series" }
-            desc = doc.select(".description, .synopsis, p").firstOrNull()?.text() ?: ""
-            val coverEl = doc.select("img.cover, .poster img").firstOrNull()
-            if (coverEl != null) {
-                cover = coverEl.attr("src")
-            }
-
-            val epLinks = doc.select("a[href*=/watch/]")
-            for ((idx, ep) in epLinks.withIndex()) {
-                val epUrl = ep.attr("href")
-                val epTitle = ep.text().ifEmpty { "Episode ${idx + 1}" }
-                val epThumb = ep.select("img").attr("src")
-                val fullUrl = if (epUrl.startsWith("http")) epUrl else "https://hstream.moe$epUrl"
-
-                episodes.add(
-                    HanimeEpisodeData(
-                        id = "ep_${idx + 1}",
-                        url = fullUrl,
-                        coverImage = epThumb.ifEmpty { cover },
-                        episodeNumber = idx + 1,
-                        title = epTitle
-                    )
-                )
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "scrapeHanimeSeries error", e)
-        }
-
-        return ScrapedHanimeResult(
-            title = title,
-            coverImage = cover,
-            description = desc,
-            censorship = censorship,
-            episodes = episodes,
-            secondaryCovers = secondaryCovers
-        )
-    }
-
-    // 4. Sukebei / Torrent Scraper
+    // 3. Sukebei / Torrent Scraper
     suspend fun scrapeSukebei(query: String): List<ScrapedTorrent> {
         val list = mutableListOf<ScrapedTorrent>()
         try {
