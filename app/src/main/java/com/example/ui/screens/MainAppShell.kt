@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -341,21 +342,61 @@ fun MainAppShell(viewModel: MainViewModel) {
                         AnimatedContent(
                             targetState = currentScreen,
                             transitionSpec = {
-                                // Dynamic Motion (Vertical Slide) Default Transition
-                                if (navDirection == MainViewModel.NavigationDirection.BACK) {
-                                    (slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
-                                            fadeIn(animationSpec = tween(240)))
-                                        .togetherWith(
-                                            slideOutVertically(animationSpec = tween(300, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
-                                                    fadeOut(animationSpec = tween(240))
-                                        )
-                                } else {
-                                    (slideInVertically(animationSpec = tween(320, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
-                                            fadeIn(animationSpec = tween(280)))
-                                        .togetherWith(
-                                            slideOutVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
-                                                    fadeOut(animationSpec = tween(220))
-                                        )
+                                when (currentSettings.transitionStyle) {
+                                    1 -> {
+                                        // Lateral / Horizontal Slide (Opposite of Vertical)
+                                        if (navDirection == MainViewModel.NavigationDirection.BACK) {
+                                            (slideInHorizontally(animationSpec = tween(280, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
+                                                    fadeIn(animationSpec = tween(240)))
+                                                .togetherWith(
+                                                    slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { width -> width / 3 } +
+                                                            fadeOut(animationSpec = tween(200))
+                                                )
+                                        } else {
+                                            (slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> width / 3 } +
+                                                    fadeIn(animationSpec = tween(260)))
+                                                .togetherWith(
+                                                    slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
+                                                            fadeOut(animationSpec = tween(200))
+                                                )
+                                        }
+                                    }
+                                    2 -> {
+                                        // Ultra Smooth & Lightweight Fade + Subtle Scale (Minimum CPU/GPU overhead)
+                                        if (navDirection == MainViewModel.NavigationDirection.BACK) {
+                                            (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
+                                                    scaleIn(initialScale = 1.03f, animationSpec = tween(220, easing = LinearOutSlowInEasing)))
+                                                .togetherWith(
+                                                    fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing)) +
+                                                            scaleOut(targetScale = 0.97f, animationSpec = tween(180, easing = FastOutLinearInEasing))
+                                                )
+                                        } else {
+                                            (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
+                                                    scaleIn(initialScale = 0.97f, animationSpec = tween(220, easing = LinearOutSlowInEasing)))
+                                                .togetherWith(
+                                                    fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing)) +
+                                                            scaleOut(targetScale = 1.03f, animationSpec = tween(180, easing = FastOutLinearInEasing))
+                                                )
+                                        }
+                                    }
+                                    else -> {
+                                        // Default: Dynamic Vertical Motion
+                                        if (navDirection == MainViewModel.NavigationDirection.BACK) {
+                                            (slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
+                                                    fadeIn(animationSpec = tween(240)))
+                                                .togetherWith(
+                                                    slideOutVertically(animationSpec = tween(300, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
+                                                            fadeOut(animationSpec = tween(240))
+                                                )
+                                        } else {
+                                            (slideInVertically(animationSpec = tween(320, easing = FastOutSlowInEasing)) { fullHeight -> fullHeight / 5 } +
+                                                    fadeIn(animationSpec = tween(280)))
+                                                .togetherWith(
+                                                    slideOutVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { fullHeight -> -fullHeight / 12 } +
+                                                            fadeOut(animationSpec = tween(220))
+                                                )
+                                        }
+                                    }
                                 }
                             },
                             label = "screen_motion_transition"

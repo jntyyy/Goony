@@ -38,6 +38,7 @@ import com.example.ui.components.ColorPalettePicker
 import com.example.ui.components.DataBackupSection
 import com.example.ui.components.IntegrationsDropdownDebridSection
 import com.example.ui.components.NativeThemeSelector
+import com.example.ui.components.NativeTransitionSelector
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalVaultPalette
 import com.example.ui.theme.parseHexColor
@@ -205,6 +206,10 @@ fun SettingsScreen(
                         appIconStyle = currentSettings.appIconStyle,
                         onAppIconStyleChange = {
                             viewModel.updateSettings(currentSettings.copy(appIconStyle = it))
+                        },
+                        transitionStyle = currentSettings.transitionStyle,
+                        onTransitionStyleChange = {
+                            viewModel.updateSettings(currentSettings.copy(transitionStyle = it))
                         }
                     )
                 }
@@ -433,18 +438,18 @@ private fun SettingsMainMenu(
     onNavigateTo: (SettingsSection) -> Unit
 ) {
     Column(modifier = modifier) {
-        // Native Android Preferences style items with Icons
+        // Native Android Preferences style items with Custom Redesigned Icons
         SettingsPreferenceItem(
-            icon = Icons.Outlined.Tv,
+            iconRes = R.drawable.ic_settings_display,
             title = "Display",
-            summary = "Theme ($themeName), Color Palette",
+            summary = "Theme ($themeName), Transitions, Color Palette",
             onClick = { onNavigateTo(SettingsSection.DISPLAY) }
         )
 
         HorizontalDivider(modifier = Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
         SettingsPreferenceItem(
-            icon = Icons.Outlined.Security,
+            iconRes = R.drawable.ic_settings_privacy,
             title = "Privacy",
             summary = if (betaTestActive) "Beta Test (Active - Content Blurred)" else "Beta Test image privacy controls",
             onClick = { onNavigateTo(SettingsSection.PRIVACY) }
@@ -453,7 +458,7 @@ private fun SettingsMainMenu(
         HorizontalDivider(modifier = Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
         SettingsPreferenceItem(
-            icon = Icons.Outlined.CloudQueue,
+            iconRes = R.drawable.ic_settings_integrations,
             title = "Integrations",
             summary = if (rdKeyConfigured) "Real-Debrid / Torbox (Active)" else "Real-Debrid, Torbox Debrid Services",
             onClick = { onNavigateTo(SettingsSection.INTEGRATIONS) }
@@ -462,7 +467,7 @@ private fun SettingsMainMenu(
         HorizontalDivider(modifier = Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
         SettingsPreferenceItem(
-            icon = Icons.Outlined.Backup,
+            iconRes = R.drawable.ic_settings_backup,
             title = "Data & Backup",
             summary = "Export & Import JSON database backups",
             onClick = { onNavigateTo(SettingsSection.DATA_BACKUP) }
@@ -471,7 +476,7 @@ private fun SettingsMainMenu(
         HorizontalDivider(modifier = Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
         SettingsPreferenceItem(
-            icon = Icons.Outlined.Tune,
+            iconRes = R.drawable.ic_settings_advanced,
             title = "Advanced",
             summary = "Video gestures, player controls & overlay settings",
             onClick = { onNavigateTo(SettingsSection.ADVANCED) }
@@ -480,7 +485,7 @@ private fun SettingsMainMenu(
         HorizontalDivider(modifier = Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
         SettingsPreferenceItem(
-            icon = Icons.Outlined.Dataset,
+            iconRes = R.drawable.ic_settings_sample_data,
             title = "Sample dataset",
             summary = "Load or clean removable demo data",
             onClick = { onNavigateTo(SettingsSection.SAMPLE_DATA) }
@@ -584,7 +589,7 @@ private fun SettingsPrivacySection(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = Icons.Outlined.Security,
+                                painter = painterResource(id = R.drawable.ic_settings_privacy),
                                 contentDescription = null,
                                 tint = accent,
                                 modifier = Modifier.size(20.dp)
@@ -671,7 +676,7 @@ private fun SettingsPrivacySection(
 
 @Composable
 private fun SettingsPreferenceItem(
-    icon: ImageVector,
+    iconRes: Int,
     title: String,
     summary: String,
     onClick: () -> Unit,
@@ -689,7 +694,7 @@ private fun SettingsPreferenceItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(id = iconRes),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
@@ -736,7 +741,9 @@ private fun SettingsDisplaySection(
     showCards: Boolean,
     onShowCardsChange: (Boolean) -> Unit,
     appIconStyle: Int,
-    onAppIconStyleChange: (Int) -> Unit
+    onAppIconStyleChange: (Int) -> Unit,
+    transitionStyle: Int,
+    onTransitionStyleChange: (Int) -> Unit
 ) {
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
@@ -766,6 +773,31 @@ private fun SettingsDisplaySection(
                 NativeThemeSelector(
                     selectedTheme = themeName,
                     onSelectTheme = onThemeChange
+                )
+            }
+        }
+
+        // Transition Animation selection (Default Motion, Lateral Slide, Smooth Fade & Scale)
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    "Transition Animation",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                NativeTransitionSelector(
+                    selectedStyle = transitionStyle,
+                    onSelectStyle = onTransitionStyleChange
                 )
             }
         }

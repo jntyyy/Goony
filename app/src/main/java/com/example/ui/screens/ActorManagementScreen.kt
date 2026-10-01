@@ -215,6 +215,10 @@ fun ActorManagementScreen(
                                 color = palette.surface,
                                 modifier = Modifier
                                     .size(72.dp)
+                                    .graphicsLayer {
+                                        shape = CircleShape
+                                        clip = true
+                                    }
                                     .clip(CircleShape)
                                     .border(1.5.dp, circleBorderColor, CircleShape)
                             ) {
@@ -222,14 +226,14 @@ fun ActorManagementScreen(
                                     AsyncImage(
                                         model = actor.imageUrl,
                                         contentDescription = actor.name,
-                                        contentScale = ContentScale.Fit,
+                                        contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .graphicsLayer {
                                                 scaleX = actor.imageZoom
                                                 scaleY = actor.imageZoom
-                                                translationX = (actor.imagePositionX - 50f) * 1.5f
-                                                translationY = (actor.imagePositionY - 50f) * 1.5f
+                                                translationX = ((actor.imagePositionX - 50f) / 100f) * size.width
+                                                translationY = ((actor.imagePositionY - 50f) / 100f) * size.height
                                             }
                                             .privacyImageBlur(isBetaTest)
                                     )

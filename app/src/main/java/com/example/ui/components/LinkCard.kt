@@ -543,10 +543,14 @@ fun LinkCard(
                             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // The other actors list (excluding the first one)
-                            link.actorIds.drop(1).forEach { actorId ->
-                                val actorName = actorsMap[actorId] ?: actorId
-                                val actorImg = fullActorsMap[actorId]?.imageUrl ?: ""
+                            // All actors list
+                            link.actorIds.forEach { actorId ->
+                                val actorEntity = fullActorsMap[actorId]
+                                val actorName = actorsMap[actorId] ?: actorEntity?.name ?: actorId
+                                val actorImg = actorEntity?.imageUrl ?: ""
+                                val actorZoom = actorEntity?.imageZoom ?: 1.0f
+                                val actorPosX = actorEntity?.imagePositionX ?: 50f
+                                val actorPosY = actorEntity?.imagePositionY ?: 50f
                                 
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -565,6 +569,10 @@ fun LinkCard(
                                     Box(
                                         modifier = Modifier
                                             .size(54.dp)
+                                            .graphicsLayer {
+                                                shape = CircleShape
+                                                clip = true
+                                            }
                                             .clip(CircleShape)
                                             .background(palette.surface)
                                             .border(2.dp, accent.copy(alpha = 0.35f), CircleShape),
@@ -575,7 +583,14 @@ fun LinkCard(
                                                 model = actorImg,
                                                 contentDescription = actorName,
                                                 contentScale = ContentScale.Crop,
-                                                modifier = Modifier.fillMaxSize()
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .graphicsLayer {
+                                                        scaleX = actorZoom
+                                                        scaleY = actorZoom
+                                                        translationX = ((actorPosX - 50f) / 100f) * size.width
+                                                        translationY = ((actorPosY - 50f) / 100f) * size.height
+                                                    }
                                             )
                                         } else {
                                             Icon(
