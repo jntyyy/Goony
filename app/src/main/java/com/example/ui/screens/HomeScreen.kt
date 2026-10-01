@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,6 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -119,8 +124,6 @@ fun HomeScreen(
     var activeOverlayCardId by remember { mutableStateOf<String?>(null) }
     var showEditActorDialog by remember { mutableStateOf(false) }
     var showEditStudioDialog by remember { mutableStateOf(false) }
-    var showAdjustActorDialog by remember { mutableStateOf(false) }
-    var showAdjustStudioDialog by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = viewModel.homeScrollIndex,
@@ -569,331 +572,229 @@ fun HomeScreen(
         }
     }
 
-    // Actor Details & Deletion Dialog
+    // Actor Details & Deletion Dialog (with inline Adjustment mode in the same dialog)
     if (showEditActorDialog && targetActor != null) {
+        var isAdjustMode by remember { mutableStateOf(false) }
         var confirmDeleteActor by remember { mutableStateOf(false) }
+
+        var posX by remember(targetActor.id, targetActor.imagePositionX) { mutableFloatStateOf(targetActor.imagePositionX) }
+        var posY by remember(targetActor.id, targetActor.imagePositionY) { mutableFloatStateOf(targetActor.imagePositionY) }
+        var zoom by remember(targetActor.id, targetActor.imageZoom) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(0.7f, 3.0f)) }
+
+        val isBetaTest = LocalBetaTestPrivacy.current
+        val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
+        val circleBorderColor = if (isLight) Color.Black else Color.White
 
         AlertDialog(
             onDismissRequest = {
                 showEditActorDialog = false
                 confirmDeleteActor = false
+                isAdjustMode = false
             },
             shape = RoundedCornerShape(28.dp),
             title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Actor Details",
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(
-                        onClick = {
-                            showEditActorDialog = false
-                            showAdjustActorDialog = true
-                        },
-                        modifier = Modifier.testTag("adjust_actor_photo_button")
+                if (!isAdjustMode) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Adjust Photo Position & Zoom",
-                            tint = MaterialTheme.colorScheme.primary
+                        Text(
+                            text = "Actor Details",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge
                         )
+                        IconButton(
+                            onClick = { isAdjustMode = true },
+                            modifier = Modifier.testTag("adjust_actor_photo_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Adjust Photo Position & Zoom",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { isAdjustMode = false },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "Adjust Photo",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                posX = 50f
+                                posY = 50f
+                                zoom = 1.0f
+                            }
+                        ) {
+                            Text("Reset", style = MaterialTheme.typography.labelLarge)
+                        }
                     }
                 }
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Static / Unchangeable Name Field matching Add Scene style
-                    OutlinedTextField(
-                        value = targetActor.name,
-                        onValueChange = {},
-                        readOnly = true,
-                        singleLine = true,
-                        label = { Text("Name") },
-                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
-                        shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("actor_name_static_input")
-                    )
+                if (!isAdjustMode) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Static / Unchangeable Name Field matching Add Scene style
+                        OutlinedTextField(
+                            value = targetActor.name,
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            label = { Text("Name") },
+                            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                            shape = RoundedCornerShape(32.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("actor_name_static_input")
+                        )
 
-                    // Static / Unchangeable Image URL Field matching Add Scene style
-                    OutlinedTextField(
-                        value = targetActor.imageUrl ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        singleLine = true,
-                        label = { Text("Image URL") },
-                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
-                        shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("actor_image_static_input")
-                    )
+                        // Static / Unchangeable Image URL Field matching Add Scene style
+                        OutlinedTextField(
+                            value = targetActor.imageUrl ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            label = { Text("Image URL") },
+                            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                            shape = RoundedCornerShape(32.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("actor_image_static_input")
+                        )
 
-                    val isBetaTest = LocalBetaTestPrivacy.current
-
-                    // Circular Preview Section
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        // Delete Actor and Linked Scenes Section (Circular Button)
+                        if (!confirmDeleteActor) {
+                            Button(
+                                onClick = { confirmDeleteActor = true },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFEF4444).copy(alpha = 0.12f),
+                                    contentColor = Color(0xFFEF4444)
+                                ),
+                                shape = CircleShape,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .testTag("delete_actor_cascade_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Delete Actor Scene",
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        } else {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFEF4444).copy(alpha = 0.12f)
+                                ),
+                                shape = RoundedCornerShape(24.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Text(
+                                        text = "Delete '${targetActor.name}' and all scenes referencing solely this actor? (Scenes with multiple actors will be preserved).",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFFDC2626),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(
+                                            onClick = { confirmDeleteActor = false },
+                                            shape = CircleShape
+                                        ) {
+                                            Text("Cancel")
+                                        }
+                                        Spacer(Modifier.width(6.dp))
+                                        Button(
+                                            onClick = {
+                                                showEditActorDialog = false
+                                                confirmDeleteActor = false
+                                                viewModel.deleteActorWithCascade(targetActor.id)
+                                                viewModel.navigateBack()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFFEF4444)
+                                            ),
+                                            shape = CircleShape
+                                        ) {
+                                            Text("Confirm Delete", color = Color.White)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Inline Adjust Photo View
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        // Big Circular Preview (Uncropped via ContentScale.Fit, completely confined in circle)
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            shadowElevation = 2.dp,
+                            shadowElevation = 3.dp,
                             modifier = Modifier
-                                .size(56.dp)
+                                .size(160.dp)
                                 .clip(CircleShape)
-                                .border(1.5.dp, if (MaterialTheme.colorScheme.background.luminance() > 0.5f) Color.Black else Color.White, CircleShape)
+                                .border(2.dp, circleBorderColor, CircleShape)
                         ) {
                             if (!targetActor.imageUrl.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = targetActor.imageUrl,
-                                    contentDescription = "Preview",
-                                    contentScale = ContentScale.Crop,
+                                Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .graphicsLayer {
-                                            scaleX = targetActor.imageZoom
-                                            scaleY = targetActor.imageZoom
-                                            translationX = (targetActor.imagePositionX - 50f) * 1.5f
-                                            translationY = (targetActor.imagePositionY - 50f) * 1.5f
-                                        }
-                                        .privacyImageBlur(isBetaTest)
-                                )
-                                if (isBetaTest) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.Black.copy(alpha = 0.75f))
-                                    )
-                                }
-                            } else {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_nav_actor),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                }
-                            }
-                        }
-                        Column {
-                            Text(
-                                text = "Preview",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = if (!targetActor.imageUrl.isNullOrBlank()) "Actor photo preview" else "No image set",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // Delete Actor and Linked Scenes Section (Circular Button)
-                    if (!confirmDeleteActor) {
-                        Button(
-                            onClick = { confirmDeleteActor = true },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFEF4444).copy(alpha = 0.12f),
-                                contentColor = Color(0xFFEF4444)
-                            ),
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                                .testTag("delete_actor_cascade_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "Delete Actor Scene",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    } else {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFFEF4444).copy(alpha = 0.12f)
-                            ),
-                            shape = RoundedCornerShape(24.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Text(
-                                    text = "Delete '${targetActor.name}' and all scenes referencing solely this actor? (Scenes with multiple actors will be preserved).",
-                                    fontSize = 13.sp,
-                                    color = Color(0xFFDC2626),
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    TextButton(
-                                        onClick = { confirmDeleteActor = false },
-                                        shape = CircleShape
-                                    ) {
-                                        Text("Cancel")
-                                    }
-                                    Spacer(Modifier.width(6.dp))
-                                    Button(
-                                        onClick = {
-                                            showEditActorDialog = false
-                                            confirmDeleteActor = false
-                                            viewModel.deleteActorWithCascade(targetActor.id)
-                                            viewModel.navigateBack()
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFFEF4444)
-                                        ),
-                                        shape = CircleShape
-                                    ) {
-                                        Text("Confirm Delete", color = Color.White)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showEditActorDialog = false
-                        confirmDeleteActor = false
-                    },
-                    shape = CircleShape
-                ) {
-                    Text("Close")
-                }
-            }
-        )
-    }
-
-    // Studio Details & Deletion Dialog
-    if (showEditStudioDialog && targetStudio != null) {
-        var confirmDeleteStudio by remember { mutableStateOf(false) }
-
-        AlertDialog(
-            onDismissRequest = {
-                showEditStudioDialog = false
-                confirmDeleteStudio = false
-            },
-            shape = RoundedCornerShape(28.dp),
-            title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Studio Details",
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(
-                        onClick = {
-                            showEditStudioDialog = false
-                            showAdjustStudioDialog = true
-                        },
-                        modifier = Modifier.testTag("adjust_studio_bg_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Adjust Logo Background",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Static / Unchangeable Name Field matching Add Scene style
-                    OutlinedTextField(
-                        value = targetStudio.name,
-                        onValueChange = {},
-                        readOnly = true,
-                        singleLine = true,
-                        label = { Text("Name") },
-                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
-                        shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("studio_name_static_input")
-                    )
-
-                    // Static / Unchangeable Image URL Field matching Add Scene style
-                    OutlinedTextField(
-                        value = targetStudio.logoUrl ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        singleLine = true,
-                        label = { Text("Image URL") },
-                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
-                        shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("studio_image_static_input")
-                    )
-
-                    val isBetaTestStudio = LocalBetaTestPrivacy.current
-
-                    val studioBgColor = targetStudio.logoBgColor?.let {
-                        try { Color(android.graphics.Color.parseColor(it)) } catch (_: Exception) { null }
-                    } ?: MaterialTheme.colorScheme.surfaceVariant
-
-                    // Circular Preview Section
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = studioBgColor,
-                            shadowElevation = 2.dp,
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .border(1.5.dp, if (MaterialTheme.colorScheme.background.luminance() > 0.5f) Color.Black else Color.White, CircleShape)
-                        ) {
-                            if (!targetStudio.logoUrl.isNullOrBlank()) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
+                                        .clip(CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     AsyncImage(
-                                        model = targetStudio.logoUrl,
-                                        contentDescription = "Preview",
+                                        model = targetActor.imageUrl,
+                                        contentDescription = targetActor.name,
                                         contentScale = ContentScale.Fit,
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .padding(6.dp)
-                                            .privacyImageBlur(isBetaTestStudio)
+                                            .graphicsLayer {
+                                                scaleX = zoom
+                                                scaleY = zoom
+                                                translationX = (posX - 50f) * 2.8f
+                                                translationY = (posY - 50f) * 2.8f
+                                            }
+                                            .privacyImageBlur(isBetaTest)
                                     )
-                                    if (isBetaTestStudio) {
+                                    if (isBetaTest) {
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
@@ -904,347 +805,150 @@ fun HomeScreen(
                             } else {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
-                                        painter = painterResource(id = R.drawable.ic_nav_studio),
+                                        painter = painterResource(id = R.drawable.ic_nav_actor),
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier.size(64.dp)
                                     )
                                 }
                             }
                         }
-                        Column {
-                            Text(
-                                text = "Preview",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = if (!targetStudio.logoUrl.isNullOrBlank()) "Studio logo preview" else "No logo set",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
 
-                    // Delete Studio and Linked Scenes Section (Circular Button)
-                    if (!confirmDeleteStudio) {
-                        Button(
-                            onClick = { confirmDeleteStudio = true },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFEF4444).copy(alpha = 0.12f),
-                                contentColor = Color(0xFFEF4444)
-                            ),
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                                .testTag("delete_studio_cascade_button")
+                        // 3 Sliders: X, Y, Zoom (Slim, clean, smooth control)
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "Delete Studio Scene",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    } else {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFFEF4444).copy(alpha = 0.12f)
-                            ),
-                            shape = RoundedCornerShape(24.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Text(
-                                    text = "Delete '${targetStudio.name}' and all associated scenes without exception?",
-                                    fontSize = 13.sp,
-                                    color = Color(0xFFDC2626),
-                                    fontWeight = FontWeight.Medium
-                                )
+                            // Slider X
+                            Column {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    TextButton(
-                                        onClick = { confirmDeleteStudio = false },
-                                        shape = CircleShape
-                                    ) {
-                                        Text("Cancel")
-                                    }
-                                    Spacer(Modifier.width(6.dp))
-                                    Button(
-                                        onClick = {
-                                            showEditStudioDialog = false
-                                            confirmDeleteStudio = false
-                                            viewModel.deleteStudioWithCascade(targetStudio.id)
-                                            viewModel.navigateBack()
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFFEF4444)
-                                        ),
-                                        shape = CircleShape
-                                    ) {
-                                        Text("Confirm Delete", color = Color.White)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showEditStudioDialog = false
-                        confirmDeleteStudio = false
-                    },
-                    shape = CircleShape
-                ) {
-                    Text("Close")
-                }
-            }
-        )
-    }
-
-    // ========================================================
-    // ACTOR PHOTO POSITION & ZOOM ADJUSTMENTS DIALOG
-    // ========================================================
-    if (showAdjustActorDialog && targetActor != null) {
-        var posX by remember(targetActor.id, targetActor.imagePositionX) { mutableFloatStateOf(targetActor.imagePositionX) }
-        var posY by remember(targetActor.id, targetActor.imagePositionY) { mutableFloatStateOf(targetActor.imagePositionY) }
-        var zoom by remember(targetActor.id, targetActor.imageZoom) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(0.7f, 3.0f)) }
-        val isBetaTest = LocalBetaTestPrivacy.current
-        val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
-        val circleBorderColor = if (isLight) Color.Black else Color.White
-
-        AlertDialog(
-            onDismissRequest = {
-                showAdjustActorDialog = false
-                showEditActorDialog = true
-            },
-            shape = RoundedCornerShape(28.dp),
-            title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Adjust Photo",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    TextButton(
-                        onClick = {
-                            posX = 50f
-                            posY = 50f
-                            zoom = 1.0f
-                        }
-                    ) {
-                        Text("Reset", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Big Circular Preview (Preview live changes, never bleeds outside circle)
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shadowElevation = 4.dp,
-                        modifier = Modifier
-                            .size(160.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, circleBorderColor, CircleShape)
-                    ) {
-                        if (!targetActor.imageUrl.isNullOrBlank()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AsyncImage(
-                                    model = targetActor.imageUrl,
-                                    contentDescription = targetActor.name,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .graphicsLayer {
-                                            scaleX = zoom
-                                            scaleY = zoom
-                                            translationX = (posX - 50f) * 2.8f
-                                            translationY = (posY - 50f) * 2.8f
-                                        }
-                                        .privacyImageBlur(isBetaTest)
-                                )
-                                if (isBetaTest) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.Black.copy(alpha = 0.75f))
+                                    Text(
+                                        text = "X (Horizontal)",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${posX.toInt()}%",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
-                            }
-                        } else {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_nav_actor),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(64.dp)
+                                SleekSlimSlider(
+                                    value = posX,
+                                    onValueChange = { posX = it },
+                                    valueRange = 0f..100f
                                 )
                             }
-                        }
-                    }
 
-                    // 3 Sliders: X, Y, Zoom (Slim, easy to slide and control)
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Slider X
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "X (Horizontal)",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "${posX.toInt()}%",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                            // Slider Y
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Y (Vertical)",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${posY.toInt()}%",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                SleekSlimSlider(
+                                    value = posY,
+                                    onValueChange = { posY = it },
+                                    valueRange = 0f..100f
                                 )
                             }
-                            Slider(
-                                value = posX,
-                                onValueChange = { posX = it },
-                                valueRange = 0f..100f,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(28.dp)
-                            )
-                        }
 
-                        // Slider Y
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Y (Vertical)",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "${posY.toInt()}%",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Slider(
-                                value = posY,
-                                onValueChange = { posY = it },
-                                valueRange = 0f..100f,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(28.dp)
-                            )
-                        }
-
-                        // Slider Zoom
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Zoom",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = String.format(Locale.US, "%.2fx", zoom),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                            // Slider Zoom
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Zoom",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = String.format(Locale.US, "%.2fx", zoom),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                SleekSlimSlider(
+                                    value = zoom,
+                                    onValueChange = { zoom = it },
+                                    valueRange = 0.7f..3.0f
                                 )
                             }
-                            Slider(
-                                value = zoom,
-                                onValueChange = { zoom = it },
-                                valueRange = 0.7f..3.0f,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(28.dp)
-                            )
                         }
                     }
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        val updatedActor = targetActor.copy(
-                            imagePositionX = posX,
-                            imagePositionY = posY,
-                            imageZoom = zoom
-                        )
-                        viewModel.saveActor(updatedActor)
-                        showAdjustActorDialog = false
-                        showEditActorDialog = true
-                    },
-                    shape = CircleShape
-                ) {
-                    Text("Save")
+                if (isAdjustMode) {
+                    Button(
+                        onClick = {
+                            val updatedActor = targetActor.copy(
+                                imagePositionX = posX,
+                                imagePositionY = posY,
+                                imageZoom = zoom
+                            )
+                            viewModel.saveActor(updatedActor)
+                            isAdjustMode = false
+                        },
+                        shape = CircleShape
+                    ) {
+                        Text("Save")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        showAdjustActorDialog = false
-                        showEditActorDialog = true
-                    },
-                    shape = CircleShape
-                ) {
-                    Text("Cancel")
+                if (!isAdjustMode) {
+                    TextButton(
+                        onClick = {
+                            showEditActorDialog = false
+                            confirmDeleteActor = false
+                        },
+                        shape = CircleShape
+                    ) {
+                        Text("Close")
+                    }
+                } else {
+                    TextButton(
+                        onClick = { isAdjustMode = false },
+                        shape = CircleShape
+                    ) {
+                        Text("Back")
+                    }
                 }
             }
         )
     }
 
-    // ========================================================
-    // STUDIO LOGO BACKGROUND GRADIENT DIALOG
-    // ========================================================
-    if (showAdjustStudioDialog && targetStudio != null) {
+    // Studio Details & Deletion Dialog (with inline Background adjustment in the same dialog)
+    if (showEditStudioDialog && targetStudio != null) {
+        var isAdjustMode by remember { mutableStateOf(false) }
+        var confirmDeleteStudio by remember { mutableStateOf(false) }
+
         val initialFraction = remember(targetStudio.id, targetStudio.logoBgColor) {
             val bg = targetStudio.logoBgColor
             if (bg != null) {
@@ -1266,7 +970,7 @@ fun HomeScreen(
 
         val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
         val circleBorderColor = if (isLight) Color.Black else Color.White
-        val isBetaTest = LocalBetaTestPrivacy.current
+        val isBetaTestStudio = LocalBetaTestPrivacy.current
 
         val currentGray = (gradientFraction * 255).toInt().coerceIn(0, 255)
         val currentBgColor = if (isCustomBgEnabled) Color(currentGray, currentGray, currentGray) else MaterialTheme.colorScheme.surfaceVariant
@@ -1274,167 +978,464 @@ fun HomeScreen(
 
         AlertDialog(
             onDismissRequest = {
-                showAdjustStudioDialog = false
-                showEditStudioDialog = true
+                showEditStudioDialog = false
+                confirmDeleteStudio = false
+                isAdjustMode = false
             },
             shape = RoundedCornerShape(28.dp),
             title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Logo Background",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    TextButton(
-                        onClick = {
-                            isCustomBgEnabled = false
-                            gradientFraction = 0.0f
-                        }
+                if (!isAdjustMode) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Reset", style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            text = "Studio Details",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        IconButton(
+                            onClick = { isAdjustMode = true },
+                            modifier = Modifier.testTag("adjust_studio_bg_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Adjust Logo Background",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { isAdjustMode = false },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "Logo Background",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                isCustomBgEnabled = false
+                                gradientFraction = 0.0f
+                            }
+                        ) {
+                            Text("Reset", style = MaterialTheme.typography.labelLarge)
+                        }
                     }
                 }
             },
             text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Big Circular Preview with dynamic background color
-                    Surface(
-                        shape = CircleShape,
-                        color = currentBgColor,
-                        shadowElevation = 4.dp,
-                        modifier = Modifier
-                            .size(160.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, circleBorderColor, CircleShape)
-                    ) {
-                        if (!targetStudio.logoUrl.isNullOrBlank()) {
-                            Box(
+                if (!isAdjustMode) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Static / Unchangeable Name Field matching Add Scene style
+                        OutlinedTextField(
+                            value = targetStudio.name,
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            label = { Text("Name") },
+                            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                            shape = RoundedCornerShape(32.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("studio_name_static_input")
+                        )
+
+                        // Static / Unchangeable Image URL Field matching Add Scene style
+                        OutlinedTextField(
+                            value = targetStudio.logoUrl ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            label = { Text("Image URL") },
+                            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                            shape = RoundedCornerShape(32.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("studio_image_static_input")
+                        )
+
+                        // Delete Studio Section (Circular Button)
+                        if (!confirmDeleteStudio) {
+                            Button(
+                                onClick = { confirmDeleteStudio = true },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFEF4444).copy(alpha = 0.12f),
+                                    contentColor = Color(0xFFEF4444)
+                                ),
+                                shape = CircleShape,
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .padding(20.dp),
-                                contentAlignment = Alignment.Center
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .testTag("delete_studio_cascade_button")
                             ) {
-                                AsyncImage(
-                                    model = targetStudio.logoUrl,
-                                    contentDescription = targetStudio.name,
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .privacyImageBlur(isBetaTest)
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                if (isBetaTest) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.Black.copy(alpha = 0.75f))
-                                    )
-                                }
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Delete Studio Scene",
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         } else {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_nav_studio),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(64.dp)
-                                )
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFEF4444).copy(alpha = 0.12f)
+                                ),
+                                shape = RoundedCornerShape(24.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Text(
+                                        text = "Delete '${targetStudio.name}' and all associated scenes without exception?",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFFDC2626),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(
+                                            onClick = { confirmDeleteStudio = false },
+                                            shape = CircleShape
+                                        ) {
+                                            Text("Cancel")
+                                        }
+                                        Spacer(Modifier.width(6.dp))
+                                        Button(
+                                            onClick = {
+                                                showEditStudioDialog = false
+                                                confirmDeleteStudio = false
+                                                viewModel.deleteStudioWithCascade(targetStudio.id)
+                                                viewModel.navigateBack()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFFEF4444)
+                                            ),
+                                            shape = CircleShape
+                                        ) {
+                                            Text("Confirm Delete", color = Color.White)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-
-                    // Gradient Slider from Black to White
+                } else {
+                    // Inline Adjust Studio Background View
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        // Big Circular Preview with dynamic background color
+                        Surface(
+                            shape = CircleShape,
+                            color = currentBgColor,
+                            shadowElevation = 3.dp,
+                            modifier = Modifier
+                                .size(160.dp)
+                                .clip(CircleShape)
+                                .border(2.dp, circleBorderColor, CircleShape)
                         ) {
-                            Text(
-                                text = "Background (Black to White)",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = if (isCustomBgEnabled) hexString else "Default",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            if (!targetStudio.logoUrl.isNullOrBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .padding(20.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage(
+                                        model = targetStudio.logoUrl,
+                                        contentDescription = targetStudio.name,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .privacyImageBlur(isBetaTestStudio)
+                                    )
+                                    if (isBetaTestStudio) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color.Black.copy(alpha = 0.75f))
+                                        )
+                                    }
+                                }
+                            } else {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_nav_studio),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                }
+                            }
                         }
 
-                        // Gradient visual track bar
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(14.dp)
-                                .clip(RoundedCornerShape(7.dp))
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(
-                                            Color.Black,
-                                            Color(0xFF333333),
-                                            Color(0xFF666666),
-                                            Color(0xFF999999),
-                                            Color(0xFFCCCCCC),
-                                            Color.White
-                                        )
-                                    )
+                        // Gradient Slider from Black to White (The slider itself is the colored gradient track)
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Background Color",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
-                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(7.dp))
-                        )
+                                Text(
+                                    text = if (isCustomBgEnabled) hexString else "Default",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
 
-                        // Slim slider controlling shade from Black (0.0) to White (1.0)
-                        Slider(
-                            value = gradientFraction,
-                            onValueChange = {
-                                gradientFraction = it
-                                isCustomBgEnabled = true
-                            },
-                            valueRange = 0f..1f,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(28.dp)
-                        )
+                            GradientSlider(
+                                value = gradientFraction,
+                                onValueChange = {
+                                    gradientFraction = it
+                                    isCustomBgEnabled = true
+                                },
+                                currentColor = currentBgColor
+                            )
+                        }
                     }
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        val finalHex = if (isCustomBgEnabled) hexString else null
-                        viewModel.saveStudio(targetStudio.copy(logoBgColor = finalHex))
-                        showAdjustStudioDialog = false
-                        showEditStudioDialog = true
-                    },
-                    shape = CircleShape
-                ) {
-                    Text("Save")
+                if (isAdjustMode) {
+                    Button(
+                        onClick = {
+                            val finalHex = if (isCustomBgEnabled) hexString else null
+                            viewModel.saveStudio(targetStudio.copy(logoBgColor = finalHex))
+                            isAdjustMode = false
+                        },
+                        shape = CircleShape
+                    ) {
+                        Text("Save")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        showAdjustStudioDialog = false
-                        showEditStudioDialog = true
-                    },
-                    shape = CircleShape
-                ) {
-                    Text("Cancel")
+                if (!isAdjustMode) {
+                    TextButton(
+                        onClick = {
+                            showEditStudioDialog = false
+                            confirmDeleteStudio = false
+                        },
+                        shape = CircleShape
+                    ) {
+                        Text("Close")
+                    }
+                } else {
+                    TextButton(
+                        onClick = { isAdjustMode = false },
+                        shape = CircleShape
+                    ) {
+                        Text("Back")
+                    }
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun SleekSlimSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier,
+    trackHeight: androidx.compose.ui.unit.Dp = 4.dp,
+    thumbDiameter: androidx.compose.ui.unit.Dp = 16.dp,
+    activeColor: Color = MaterialTheme.colorScheme.primary,
+    inactiveColor: Color = MaterialTheme.colorScheme.surfaceVariant
+) {
+    val fraction = ((value - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f)
+    val thumbRadius = thumbDiameter / 2
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(28.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        val widthPx = constraints.maxWidth.toFloat()
+        val density = LocalDensity.current
+        val thumbRadiusPx = with(density) { thumbRadius.toPx() }
+        val usableWidth = (widthPx - thumbRadiusPx * 2).coerceAtLeast(1f)
+
+        fun updateFromX(touchX: Float) {
+            val clamped = (touchX - thumbRadiusPx).coerceIn(0f, usableWidth)
+            val newFraction = clamped / usableWidth
+            val newValue = valueRange.start + newFraction * (valueRange.endInclusive - valueRange.start)
+            onValueChange(newValue)
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(usableWidth, valueRange) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
+                        updateFromX(down.position.x)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) break
+                            change.consume()
+                            updateFromX(change.position.x)
+                        }
+                    }
+                },
+            contentAlignment = Alignment.CenterStart
+        ) {
+            // Inactive slim track
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(trackHeight)
+                    .clip(CircleShape)
+                    .background(inactiveColor)
+            )
+            // Active slim track
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction)
+                    .height(trackHeight)
+                    .clip(CircleShape)
+                    .background(activeColor)
+            )
+            // Sleek, clean circular thumb
+            val thumbOffset = with(density) { (fraction * usableWidth).toDp() }
+            Box(
+                modifier = Modifier
+                    .offset(x = thumbOffset)
+                    .size(thumbDiameter)
+                    .shadow(2.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(activeColor)
+                    .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape)
+            )
+        }
+    }
+}
+
+@Composable
+private fun GradientSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    currentColor: Color,
+    modifier: Modifier = Modifier,
+    trackHeight: androidx.compose.ui.unit.Dp = 8.dp,
+    thumbDiameter: androidx.compose.ui.unit.Dp = 18.dp
+) {
+    val fraction = value.coerceIn(0f, 1f)
+    val thumbRadius = thumbDiameter / 2
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(28.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        val widthPx = constraints.maxWidth.toFloat()
+        val density = LocalDensity.current
+        val thumbRadiusPx = with(density) { thumbRadius.toPx() }
+        val usableWidth = (widthPx - thumbRadiusPx * 2).coerceAtLeast(1f)
+
+        fun updateFromX(touchX: Float) {
+            val clamped = (touchX - thumbRadiusPx).coerceIn(0f, usableWidth)
+            val newFraction = clamped / usableWidth
+            onValueChange(newFraction)
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(usableWidth) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
+                        updateFromX(down.position.x)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) break
+                            change.consume()
+                            updateFromX(change.position.x)
+                        }
+                    }
+                },
+            contentAlignment = Alignment.CenterStart
+        ) {
+            // The colored gradient track itself - slim and sleek!
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(trackHeight)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Black,
+                                Color(0xFF333333),
+                                Color(0xFF666666),
+                                Color(0xFF999999),
+                                Color(0xFFCCCCCC),
+                                Color.White
+                            )
+                        )
+                    )
+                    .border(0.75.dp, Color.Gray.copy(alpha = 0.4f), CircleShape)
+            )
+
+            // Dynamic Thumb with current color fill and crisp contrasting border
+            val thumbOffset = with(density) { (fraction * usableWidth).toDp() }
+            val thumbBorderColor = if (currentColor.luminance() > 0.5f) Color.Black else Color.White
+            Box(
+                modifier = Modifier
+                    .offset(x = thumbOffset)
+                    .size(thumbDiameter)
+                    .shadow(2.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(currentColor)
+                    .border(2.dp, thumbBorderColor, CircleShape)
+            )
+        }
     }
 }

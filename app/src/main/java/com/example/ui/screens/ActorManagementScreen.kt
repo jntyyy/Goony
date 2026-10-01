@@ -222,7 +222,7 @@ fun ActorManagementScreen(
                                     AsyncImage(
                                         model = actor.imageUrl,
                                         contentDescription = actor.name,
-                                        contentScale = ContentScale.Crop,
+                                        contentScale = ContentScale.Fit,
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .graphicsLayer {
