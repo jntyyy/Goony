@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +53,8 @@ fun ActorManagementScreen(
 ) {
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
+    val isLight = palette.name.equals("light", ignoreCase = true)
+    val circleBorderColor = if (isLight) Color.Black else Color.White
 
     val actors by viewModel.allActors.collectAsStateWithLifecycle()
     val links by viewModel.allLinks.collectAsStateWithLifecycle()
@@ -93,7 +97,11 @@ fun ActorManagementScreen(
                             onClick = { showSortMenu = true },
                             modifier = Modifier.testTag("sort_actors_button")
                         ) {
-                            Icon(Icons.Default.SwapVert, contentDescription = "Sort", tint = palette.textPrimary)
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_app_sort),
+                                contentDescription = "Sort",
+                                tint = palette.textPrimary
+                            )
                         }
 
                         DropdownMenu(
@@ -170,7 +178,7 @@ fun ActorManagementScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.PeopleOutline, contentDescription = null, tint = palette.textMuted, modifier = Modifier.size(54.dp))
+                    Icon(painter = painterResource(id = R.drawable.ic_nav_actor), contentDescription = null, tint = palette.textMuted, modifier = Modifier.size(54.dp))
                     Text("No actors in vault", color = palette.textPrimary, fontWeight = FontWeight.Bold)
                     Button(onClick = { showAddDialog = true }) {
                         Text("Add Actor")
@@ -207,7 +215,7 @@ fun ActorManagementScreen(
                                 modifier = Modifier
                                     .size(72.dp)
                                     .clip(CircleShape)
-                                    .border(2.dp, if (showCards) Color.White else accent.copy(alpha = 0.6f), CircleShape)
+                                    .border(1.5.dp, circleBorderColor, CircleShape)
                             ) {
                                 if (actor.imageUrl.isNotEmpty()) {
                                     AsyncImage(
@@ -234,15 +242,13 @@ fun ActorManagementScreen(
                                                     listOf(accent.copy(alpha = 0.25f), palette.cardBg)
                                                 )
                                             ),
-                                        contentAlignment = Alignment.BottomCenter
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Person,
+                                            painter = painterResource(id = R.drawable.ic_nav_actor),
                                             contentDescription = null,
                                             tint = palette.textSecondary.copy(alpha = 0.9f),
-                                            modifier = Modifier
-                                                .fillMaxSize(0.85f)
-                                                .padding(bottom = 2.dp)
+                                            modifier = Modifier.size(36.dp)
                                         )
                                     }
                                 }
@@ -267,16 +273,26 @@ fun ActorManagementScreen(
                         }
                     }
 
+                    val isLight = palette.name.equals("light", ignoreCase = true)
+                    val isAmoled = palette.name.equals("amoled", ignoreCase = true)
+                    val neutralCardBg = when {
+                        isAmoled -> Color(0xFF1E1E24)
+                        isLight -> Color(0xFFFFFFFF)
+                        else -> Color(0xFF383842)
+                    }
+
                     if (showCards) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
-                                .border(1.dp, palette.border, RoundedCornerShape(14.dp))
                                 .clickable {
                                     viewModel.navigateTo(ScreenState.ActorScenes(actor.id))
                                 },
-                            colors = CardDefaults.cardColors(containerColor = palette.cardBg)
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = if (isLight) 3.dp else 1.5.dp
+                            ),
+                            colors = CardDefaults.cardColors(containerColor = neutralCardBg)
                         ) {
                             itemContent()
                         }
@@ -341,7 +357,7 @@ fun ActorManagementScreen(
                             modifier = Modifier
                                 .size(54.dp)
                                 .clip(CircleShape)
-                                .border(1.5.dp, accent.copy(alpha = 0.6f), CircleShape)
+                                .border(1.5.dp, circleBorderColor, CircleShape)
                         ) {
                             if (imageUrl.trim().isNotEmpty()) {
                                 AsyncImage(
@@ -353,7 +369,7 @@ fun ActorManagementScreen(
                             } else {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
-                                        imageVector = Icons.Default.Person,
+                                        painter = painterResource(id = R.drawable.ic_nav_actor),
                                         contentDescription = null,
                                         tint = palette.textMuted,
                                         modifier = Modifier.size(30.dp)

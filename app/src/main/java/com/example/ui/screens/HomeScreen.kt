@@ -647,7 +647,7 @@ fun HomeScreen(
                             } else {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
-                                        imageVector = Icons.Default.Person,
+                                        painter = painterResource(id = R.drawable.ic_nav_actor),
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(32.dp)
@@ -844,7 +844,7 @@ fun HomeScreen(
                             } else {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
-                                        imageVector = Icons.Default.MovieCreation,
+                                        painter = painterResource(id = R.drawable.ic_nav_studio),
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(32.dp)
