@@ -413,8 +413,11 @@ fun StudioManagementScreen(
                 Button(
                     onClick = {
                         if (name.isNotBlank()) {
-                            val studio = StudioEntity(
-                                id = editing?.id ?: UUID.randomUUID().toString(),
+                            val studio = editing?.copy(
+                                name = name.trim(),
+                                logoUrl = logoUrl.trim().ifEmpty { null }
+                            ) ?: StudioEntity(
+                                id = UUID.randomUUID().toString(),
                                 name = name.trim(),
                                 logoUrl = logoUrl.trim().ifEmpty { null }
                             )

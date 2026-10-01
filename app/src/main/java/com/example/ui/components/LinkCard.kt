@@ -570,18 +570,14 @@ fun LinkCard(
                                     Box(
                                         modifier = Modifier
                                             .size(54.dp)
-                                            .graphicsLayer {
-                                                shape = CircleShape
-                                                clip = true
-                                            }
                                             .clip(CircleShape)
-                                            .background(palette.surface)
-                                            .border(2.dp, accent.copy(alpha = 0.35f), CircleShape),
+                                            .background(palette.surface),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (actorImg.isNotEmpty()) {
-                                            val biasX = (actorPosX - 50f) / 50f
-                                            val biasY = (actorPosY - 50f) / 50f
+                                            val z = actorZoom.coerceIn(1f, 3f)
+                                            val biasX = (actorPosX.coerceIn(0f, 100f) - 50f) / 50f
+                                            val biasY = (actorPosY.coerceIn(0f, 100f) - 50f) / 50f
                                             AsyncImage(
                                                 model = actorImg,
                                                 contentDescription = actorName,
@@ -590,8 +586,12 @@ fun LinkCard(
                                                 modifier = Modifier
                                                     .fillMaxSize()
                                                     .graphicsLayer {
-                                                        scaleX = actorZoom
-                                                        scaleY = actorZoom
+                                                        val maxX = size.width * (z - 1f) / 2f
+                                                        val maxY = size.height * (z - 1f) / 2f
+                                                        scaleX = z
+                                                        scaleY = z
+                                                        translationX = -biasX * maxX
+                                                        translationY = -biasY * maxY
                                                     }
                                             )
                                         } else {
@@ -602,6 +602,12 @@ fun LinkCard(
                                                 modifier = Modifier.size(32.dp)
                                             )
                                         }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .border(2.dp, accent.copy(alpha = 0.35f), CircleShape)
+                                        )
                                     }
                                     Text(
                                         text = actorName,

@@ -237,21 +237,17 @@ fun ActorManagementScreen(
                         ) {
                             val isBetaTest = LocalBetaTestPrivacy.current
 
-                            Surface(
-                                shape = CircleShape,
-                                color = palette.surface,
+                            Box(
                                 modifier = Modifier
                                     .size(72.dp)
-                                    .graphicsLayer {
-                                        shape = CircleShape
-                                        clip = true
-                                    }
                                     .clip(CircleShape)
-                                    .border(1.5.dp, circleBorderColor, CircleShape)
+                                    .background(palette.surface),
+                                contentAlignment = Alignment.Center
                             ) {
                                 if (actor.imageUrl.isNotEmpty()) {
-                                    val biasX = (actor.imagePositionX - 50f) / 50f
-                                    val biasY = (actor.imagePositionY - 50f) / 50f
+                                    val z = actor.imageZoom.coerceIn(1f, 3f)
+                                    val biasX = (actor.imagePositionX.coerceIn(0f, 100f) - 50f) / 50f
+                                    val biasY = (actor.imagePositionY.coerceIn(0f, 100f) - 50f) / 50f
                                     AsyncImage(
                                         model = actor.imageUrl,
                                         contentDescription = actor.name,
@@ -259,11 +255,15 @@ fun ActorManagementScreen(
                                         alignment = BiasAlignment(biasX, biasY),
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .graphicsLayer {
-                                                scaleX = actor.imageZoom
-                                                scaleY = actor.imageZoom
-                                            }
                                             .privacyImageBlur(isBetaTest)
+                                            .graphicsLayer {
+                                                val maxX = size.width * (z - 1f) / 2f
+                                                val maxY = size.height * (z - 1f) / 2f
+                                                scaleX = z
+                                                scaleY = z
+                                                translationX = -biasX * maxX
+                                                translationY = -biasY * maxY
+                                            }
                                     )
                                     if (isBetaTest) {
                                         Box(
@@ -291,6 +291,12 @@ fun ActorManagementScreen(
                                         )
                                     }
                                 }
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .border(1.5.dp, circleBorderColor, CircleShape)
+                                )
                             }
 
                             Spacer(modifier = Modifier.height(10.dp))
@@ -436,8 +442,11 @@ fun ActorManagementScreen(
                 Button(
                     onClick = {
                         if (name.isNotBlank()) {
-                            val actor = ActorEntity(
-                                id = editing?.id ?: UUID.randomUUID().toString(),
+                            val actor = editing?.copy(
+                                name = name.trim(),
+                                imageUrl = imageUrl.trim()
+                            ) ?: ActorEntity(
+                                id = UUID.randomUUID().toString(),
                                 name = name.trim(),
                                 imageUrl = imageUrl.trim()
                             )

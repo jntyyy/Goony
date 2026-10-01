@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -586,9 +588,9 @@ fun HomeScreen(
         var isAdjustMode by remember { mutableStateOf(false) }
         var confirmDeleteActor by remember { mutableStateOf(false) }
 
-        var posX by remember(targetActor.id, targetActor.imagePositionX) { mutableFloatStateOf(targetActor.imagePositionX) }
-        var posY by remember(targetActor.id, targetActor.imagePositionY) { mutableFloatStateOf(targetActor.imagePositionY) }
-        var zoom by remember(targetActor.id, targetActor.imageZoom) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(0.5f, 3.0f)) }
+        var posX by remember(targetActor.id) { mutableFloatStateOf(targetActor.imagePositionX.coerceIn(0f, 100f)) }
+        var posY by remember(targetActor.id) { mutableFloatStateOf(targetActor.imagePositionY.coerceIn(0f, 100f)) }
+        var zoom by remember(targetActor.id) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(1.0f, 3.0f)) }
 
         val isBetaTest = LocalBetaTestPrivacy.current
         val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
@@ -768,56 +770,48 @@ fun HomeScreen(
                     } else {
                         // Inline Adjust Photo View
                         Column(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // Big Circular Preview (Strictly clipped and layered so image NEVER bleeds outside the frame)
+                            // Big Circular Preview (Clean single clip and top border overlay)
                             Box(
                                 modifier = Modifier
                                     .size(160.dp)
                                     .shadow(3.dp, CircleShape)
-                                    .graphicsLayer {
-                                        shape = CircleShape
-                                        clip = true
-                                    }
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.surfaceVariant),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (!targetActor.imageUrl.isNullOrBlank()) {
-                                    Box(
+                                    val z = zoom.coerceIn(1f, 3f)
+                                    val biasX = (posX.coerceIn(0f, 100f) - 50f) / 50f
+                                    val biasY = (posY.coerceIn(0f, 100f) - 50f) / 50f
+                                    AsyncImage(
+                                        model = targetActor.imageUrl,
+                                        contentDescription = targetActor.name,
+                                        contentScale = ContentScale.Crop,
+                                        alignment = BiasAlignment(biasX, biasY),
                                         modifier = Modifier
                                             .fillMaxSize()
+                                            .privacyImageBlur(isBetaTest)
                                             .graphicsLayer {
-                                                shape = CircleShape
-                                                clip = true
+                                                val maxX = size.width * (z - 1f) / 2f
+                                                val maxY = size.height * (z - 1f) / 2f
+                                                scaleX = z
+                                                scaleY = z
+                                                translationX = -biasX * maxX
+                                                translationY = -biasY * maxY
                                             }
-                                            .clip(CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        val biasX = (posX - 50f) / 50f
-                                        val biasY = (posY - 50f) / 50f
-                                        AsyncImage(
-                                            model = targetActor.imageUrl,
-                                            contentDescription = targetActor.name,
-                                            contentScale = ContentScale.Crop,
-                                            alignment = BiasAlignment(biasX, biasY),
+                                    )
+                                    if (isBetaTest) {
+                                        Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .graphicsLayer {
-                                                    scaleX = zoom
-                                                    scaleY = zoom
-                                                }
-                                                .privacyImageBlur(isBetaTest)
+                                                .background(Color.Black.copy(alpha = 0.75f))
                                         )
-                                        if (isBetaTest) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .background(Color.Black.copy(alpha = 0.75f))
-                                            )
-                                        }
                                     }
                                 } else {
                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -830,7 +824,7 @@ fun HomeScreen(
                                     }
                                 }
 
-                                // Top border overlay - ALWAYS on top so the circular frame line is never covered!
+                                // Top border overlay
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -920,7 +914,7 @@ fun HomeScreen(
                                     SleekSlimSlider(
                                         value = zoom,
                                         onValueChange = { zoom = it },
-                                        valueRange = 0.5f..3.0f
+                                        valueRange = 1.0f..3.0f
                                     )
                                 }
                             }
@@ -1316,13 +1310,15 @@ private fun SleekSlimSlider(
     activeColor: Color = MaterialTheme.colorScheme.primary,
     inactiveColor: Color = MaterialTheme.colorScheme.surfaceVariant
 ) {
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val currentValueRange by rememberUpdatedState(valueRange)
     val fraction = ((value - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f)
     val thumbRadius = thumbDiameter / 2
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(28.dp),
+            .height(44.dp),
         contentAlignment = Alignment.CenterStart
     ) {
         val widthPx = constraints.maxWidth.toFloat()
@@ -1333,14 +1329,14 @@ private fun SleekSlimSlider(
         fun updateFromX(touchX: Float) {
             val clamped = (touchX - thumbRadiusPx).coerceIn(0f, usableWidth)
             val newFraction = clamped / usableWidth
-            val newValue = valueRange.start + newFraction * (valueRange.endInclusive - valueRange.start)
-            onValueChange(newValue)
+            val newValue = currentValueRange.start + newFraction * (currentValueRange.endInclusive - currentValueRange.start)
+            currentOnValueChange(newValue)
         }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(usableWidth, valueRange) {
+                .pointerInput(usableWidth) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
@@ -1365,9 +1361,10 @@ private fun SleekSlimSlider(
                     .background(inactiveColor)
             )
             // Active slim track
+            val activeTrackWidth = with(density) { (thumbRadiusPx + fraction * usableWidth).toDp() }
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(fraction)
+                    .width(activeTrackWidth)
                     .height(trackHeight)
                     .clip(CircleShape)
                     .background(activeColor)
@@ -1396,13 +1393,14 @@ private fun GradientSlider(
     trackHeight: androidx.compose.ui.unit.Dp = 8.dp,
     thumbDiameter: androidx.compose.ui.unit.Dp = 18.dp
 ) {
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
     val fraction = value.coerceIn(0f, 1f)
     val thumbRadius = thumbDiameter / 2
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(28.dp),
+            .height(44.dp),
         contentAlignment = Alignment.CenterStart
     ) {
         val widthPx = constraints.maxWidth.toFloat()
@@ -1413,7 +1411,7 @@ private fun GradientSlider(
         fun updateFromX(touchX: Float) {
             val clamped = (touchX - thumbRadiusPx).coerceIn(0f, usableWidth)
             val newFraction = clamped / usableWidth
-            onValueChange(newFraction)
+            currentOnValueChange(newFraction)
         }
 
         Box(
