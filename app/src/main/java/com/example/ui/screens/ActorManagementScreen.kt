@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -223,20 +224,18 @@ fun ActorManagementScreen(
                                     .border(1.5.dp, circleBorderColor, CircleShape)
                             ) {
                                 if (actor.imageUrl.isNotEmpty()) {
+                                    val biasX = (actor.imagePositionX - 50f) / 50f
+                                    val biasY = (actor.imagePositionY - 50f) / 50f
                                     AsyncImage(
                                         model = actor.imageUrl,
                                         contentDescription = actor.name,
                                         contentScale = ContentScale.Crop,
+                                        alignment = BiasAlignment(biasX, biasY),
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .graphicsLayer {
-                                                val z = actor.imageZoom.coerceAtLeast(1.0f)
-                                                scaleX = z
-                                                scaleY = z
-                                                val maxPanX = ((z - 1.0f) / 2f) * size.width
-                                                val maxPanY = ((z - 1.0f) / 2f) * size.height
-                                                translationX = if (maxPanX > 0f) ((actor.imagePositionX - 50f) / 50f) * maxPanX else 0f
-                                                translationY = if (maxPanY > 0f) ((actor.imagePositionY - 50f) / 50f) * maxPanY else 0f
+                                                scaleX = actor.imageZoom
+                                                scaleY = actor.imageZoom
                                             }
                                             .privacyImageBlur(isBetaTest)
                                     )

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -579,20 +580,18 @@ fun LinkCard(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (actorImg.isNotEmpty()) {
+                                            val biasX = (actorPosX - 50f) / 50f
+                                            val biasY = (actorPosY - 50f) / 50f
                                             AsyncImage(
                                                 model = actorImg,
                                                 contentDescription = actorName,
                                                 contentScale = ContentScale.Crop,
+                                                alignment = BiasAlignment(biasX, biasY),
                                                 modifier = Modifier
                                                     .fillMaxSize()
                                                     .graphicsLayer {
-                                                        val z = actorZoom.coerceAtLeast(1.0f)
-                                                        scaleX = z
-                                                        scaleY = z
-                                                        val maxPanX = ((z - 1.0f) / 2f) * size.width
-                                                        val maxPanY = ((z - 1.0f) / 2f) * size.height
-                                                        translationX = if (maxPanX > 0f) ((actorPosX - 50f) / 50f) * maxPanX else 0f
-                                                        translationY = if (maxPanY > 0f) ((actorPosY - 50f) / 50f) * maxPanY else 0f
+                                                        scaleX = actorZoom
+                                                        scaleY = actorZoom
                                                     }
                                             )
                                         } else {

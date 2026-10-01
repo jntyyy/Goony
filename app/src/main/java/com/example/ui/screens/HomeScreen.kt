@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -579,7 +580,7 @@ fun HomeScreen(
 
         var posX by remember(targetActor.id, targetActor.imagePositionX) { mutableFloatStateOf(targetActor.imagePositionX) }
         var posY by remember(targetActor.id, targetActor.imagePositionY) { mutableFloatStateOf(targetActor.imagePositionY) }
-        var zoom by remember(targetActor.id, targetActor.imageZoom) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(1.0f, 3.0f)) }
+        var zoom by remember(targetActor.id, targetActor.imageZoom) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(0.5f, 3.0f)) }
 
         val isBetaTest = LocalBetaTestPrivacy.current
         val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
@@ -787,19 +788,18 @@ fun HomeScreen(
                                             .clip(CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
+                                        val biasX = (posX - 50f) / 50f
+                                        val biasY = (posY - 50f) / 50f
                                         AsyncImage(
                                             model = targetActor.imageUrl,
                                             contentDescription = targetActor.name,
                                             contentScale = ContentScale.Crop,
+                                            alignment = BiasAlignment(biasX, biasY),
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .graphicsLayer {
                                                     scaleX = zoom
                                                     scaleY = zoom
-                                                    val maxPanX = ((zoom - 1.0f).coerceAtLeast(0f) / 2f) * size.width
-                                                    val maxPanY = ((zoom - 1.0f).coerceAtLeast(0f) / 2f) * size.height
-                                                    translationX = if (maxPanX > 0f) ((posX - 50f) / 50f) * maxPanX else 0f
-                                                    translationY = if (maxPanY > 0f) ((posY - 50f) / 50f) * maxPanY else 0f
                                                 }
                                                 .privacyImageBlur(isBetaTest)
                                         )
@@ -912,7 +912,7 @@ fun HomeScreen(
                                     SleekSlimSlider(
                                         value = zoom,
                                         onValueChange = { zoom = it },
-                                        valueRange = 1.0f..3.0f
+                                        valueRange = 0.5f..3.0f
                                     )
                                 }
                             }

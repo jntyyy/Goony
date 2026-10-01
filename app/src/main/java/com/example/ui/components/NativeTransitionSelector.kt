@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.*
@@ -53,6 +54,12 @@ fun NativeTransitionSelector(
             title = "Smooth Fade & Scale",
             subtitle = "Ultra lightweight & fluid transition",
             icon = Icons.Outlined.AutoAwesome
+        ),
+        TransitionOptionItem(
+            id = 3,
+            title = "Link Transition",
+            subtitle = "Static top header with seamless in-place transitions",
+            icon = Icons.Outlined.Link
         )
     )
 

@@ -344,18 +344,20 @@ fun MainAppShell(viewModel: MainViewModel) {
                             transitionSpec = {
                                 when (currentSettings.transitionStyle) {
                                     1 -> {
-                                        // Lateral / Horizontal Slide (Exact match to Settings screen transition - Ultra-Light & Fluid)
+                                        // Lateral / Horizontal Slide (Bidirectional Side Motion)
                                         if (navDirection == MainViewModel.NavigationDirection.BACK) {
-                                            fadeIn(animationSpec = tween(200))
+                                            (slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
+                                                    fadeIn(animationSpec = tween(200, easing = LinearOutSlowInEasing)))
                                                 .togetherWith(
-                                                    fadeOut(animationSpec = tween(150)) +
-                                                            slideOutHorizontally(animationSpec = tween(200)) { width -> width / 3 }
+                                                    slideOutHorizontally(animationSpec = tween(200, easing = FastOutSlowInEasing)) { width -> width / 4 } +
+                                                            fadeOut(animationSpec = tween(170))
                                                 )
                                         } else {
-                                            (fadeIn(animationSpec = tween(200)) +
-                                                    slideInHorizontally(animationSpec = tween(200)) { width -> width / 3 })
+                                            (slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { width -> width / 4 } +
+                                                    fadeIn(animationSpec = tween(200, easing = LinearOutSlowInEasing)))
                                                 .togetherWith(
-                                                    fadeOut(animationSpec = tween(150))
+                                                    slideOutHorizontally(animationSpec = tween(200, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
+                                                            fadeOut(animationSpec = tween(170))
                                                 )
                                         }
                                     }
@@ -374,6 +376,20 @@ fun MainAppShell(viewModel: MainViewModel) {
                                                 .togetherWith(
                                                     fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing)) +
                                                             scaleOut(targetScale = 1.03f, animationSpec = tween(180, easing = FastOutLinearInEasing))
+                                                )
+                                        }
+                                    }
+                                    3 -> {
+                                        // Link Transition: Static TopBar/Head (No slide motion), natural in-place transition of header elements
+                                        if (navDirection == MainViewModel.NavigationDirection.BACK) {
+                                            fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                                                .togetherWith(
+                                                    fadeOut(animationSpec = tween(160, easing = FastOutLinearInEasing))
+                                                )
+                                        } else {
+                                            fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                                                .togetherWith(
+                                                    fadeOut(animationSpec = tween(160, easing = FastOutLinearInEasing))
                                                 )
                                         }
                                     }
