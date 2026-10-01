@@ -42,6 +42,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
@@ -114,7 +116,8 @@ fun GoPlayer(
 fun VerticalSideBarIndicator(
     visible: Boolean,
     percent: Int,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    painter: androidx.compose.ui.graphics.painter.Painter? = null,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     alignment: Alignment,
     modifier: Modifier = Modifier,
     barHeight: androidx.compose.ui.unit.Dp = 110.dp,
@@ -124,11 +127,16 @@ fun VerticalSideBarIndicator(
     sidePadding: androidx.compose.ui.unit.Dp = 36.dp
 ) {
     val displayPercent = percent.coerceIn(0, 100)
+    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = displayPercent / 100f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 80, easing = androidx.compose.animation.core.LinearOutSlowInEasing),
+        label = "indicator_fill"
+    )
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(animationSpec = tween(180)),
-        exit = fadeOut(animationSpec = tween(250)),
+        enter = fadeIn(animationSpec = tween(150)) + scaleIn(initialScale = 0.92f, animationSpec = tween(150)),
+        exit = fadeOut(animationSpec = tween(220)) + scaleOut(targetScale = 0.95f, animationSpec = tween(220)),
         modifier = modifier
     ) {
         Column(
@@ -165,18 +173,27 @@ fun VerticalSideBarIndicator(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight((displayPercent / 100f).coerceIn(0f, 1f))
+                        .fillMaxHeight(animatedProgress.coerceIn(0f, 1f))
                         .clip(CircleShape)
                         .background(LocalAccentColor.current)
                 )
             }
 
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(iconSize)
-            )
+            if (painter != null) {
+                Icon(
+                    painter = painter,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(iconSize)
+                )
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(iconSize)
+                )
+            }
         }
     }
 }
@@ -840,14 +857,13 @@ fun ExoPlayerOverlay(
 
         // Sleek Native Side Vertical Indicators (Volume & Brightness) - Dynamic Padding based on Mode
         val overlaySidePadding = if (isLandscape) 32.dp else 16.dp
+        val exoVolumePercent = gestureVolumePercent ?: 0
         VerticalSideBarIndicator(
             visible = gestureVolumePercent != null,
-            percent = gestureVolumePercent ?: 0,
-            icon = when {
-                (gestureVolumePercent ?: 0) == 0 -> Icons.Default.VolumeOff
-                (gestureVolumePercent ?: 0) < 50 -> Icons.Default.VolumeDown
-                else -> Icons.Default.VolumeUp
-            },
+            percent = exoVolumePercent,
+            painter = painterResource(
+                id = if (exoVolumePercent == 0) R.drawable.ic_gesture_volume_mute else R.drawable.ic_gesture_volume_up
+            ),
             alignment = Alignment.CenterStart,
             barHeight = if (isLandscape) 160.dp else 130.dp,
             barWidth = 8.dp,
@@ -860,7 +876,7 @@ fun ExoPlayerOverlay(
         VerticalSideBarIndicator(
             visible = gestureBrightnessPercent != null,
             percent = gestureBrightnessPercent ?: 0,
-            icon = if ((gestureBrightnessPercent ?: 0) < 50) Icons.Default.BrightnessLow else Icons.Default.BrightnessHigh,
+            painter = painterResource(id = R.drawable.ic_gesture_brightness),
             alignment = Alignment.CenterEnd,
             barHeight = if (isLandscape) 160.dp else 130.dp,
             barWidth = 8.dp,
@@ -938,7 +954,7 @@ fun ExoPlayerOverlay(
                         modifier = Modifier.size(52.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Replay10,
+                            painter = painterResource(id = R.drawable.ic_player_rewind),
                             contentDescription = "Rewind 10s",
                             tint = Color.White,
                             modifier = Modifier.size(36.dp)
@@ -958,7 +974,7 @@ fun ExoPlayerOverlay(
                             .testTag("play_pause_button")
                     ) {
                         Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            painter = painterResource(id = if (isPlaying) R.drawable.ic_player_pause else R.drawable.ic_player_play),
                             contentDescription = if (isPlaying) "Pause" else "Play",
                             tint = Color.White,
                             modifier = Modifier.size(38.dp)
@@ -970,7 +986,7 @@ fun ExoPlayerOverlay(
                         modifier = Modifier.size(52.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Forward10,
+                            painter = painterResource(id = R.drawable.ic_player_forward),
                             contentDescription = "Forward 10s",
                             tint = Color.White,
                             modifier = Modifier.size(36.dp)
@@ -1900,14 +1916,13 @@ fun InlineCardPlayer(
         }
 
         // Sleek Native Side Vertical Indicators (Volume & Brightness) - Outer Edge Alignment
+        val inlineVolumePercent = gestureVolumePercent ?: 0
         VerticalSideBarIndicator(
             visible = gestureVolumePercent != null,
-            percent = gestureVolumePercent ?: 0,
-            icon = when {
-                (gestureVolumePercent ?: 0) == 0 -> Icons.Default.VolumeOff
-                (gestureVolumePercent ?: 0) < 50 -> Icons.Default.VolumeDown
-                else -> Icons.Default.VolumeUp
-            },
+            percent = inlineVolumePercent,
+            painter = painterResource(
+                id = if (inlineVolumePercent == 0) R.drawable.ic_gesture_volume_mute else R.drawable.ic_gesture_volume_up
+            ),
             alignment = Alignment.CenterStart,
             sidePadding = 16.dp,
             modifier = Modifier.align(Alignment.CenterStart)
@@ -1916,7 +1931,7 @@ fun InlineCardPlayer(
         VerticalSideBarIndicator(
             visible = gestureBrightnessPercent != null,
             percent = gestureBrightnessPercent ?: 0,
-            icon = if ((gestureBrightnessPercent ?: 0) < 50) Icons.Default.BrightnessLow else Icons.Default.BrightnessHigh,
+            painter = painterResource(id = R.drawable.ic_gesture_brightness),
             alignment = Alignment.CenterEnd,
             sidePadding = 16.dp,
             modifier = Modifier.align(Alignment.CenterEnd)
@@ -1973,7 +1988,7 @@ fun InlineCardPlayer(
                         modifier = Modifier.size(42.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Replay10,
+                            painter = painterResource(id = R.drawable.ic_player_rewind),
                             contentDescription = "Rewind 10s",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
@@ -1993,7 +2008,7 @@ fun InlineCardPlayer(
                             .testTag("inline_play_pause_button")
                     ) {
                         Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            painter = painterResource(id = if (isPlaying) R.drawable.ic_player_pause else R.drawable.ic_player_play),
                             contentDescription = if (isPlaying) "Pause" else "Play",
                             tint = Color.White,
                             modifier = Modifier.size(30.dp)
@@ -2005,7 +2020,7 @@ fun InlineCardPlayer(
                         modifier = Modifier.size(42.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Forward10,
+                            painter = painterResource(id = R.drawable.ic_player_forward),
                             contentDescription = "Forward 10s",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
