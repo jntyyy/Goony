@@ -22,6 +22,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,7 +69,7 @@ fun HanimeManagementScreen(
                 },
                 actions = {
                     IconButton(onClick = { showAddDialog = true }, modifier = Modifier.testTag("add_hanime_button")) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Series", tint = accent)
+                        Icon(painter = painterResource(id = R.drawable.ic_app_add), contentDescription = "Add Series", tint = accent)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = palette.surface)

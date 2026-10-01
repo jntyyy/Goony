@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -253,7 +255,7 @@ fun HomeScreen(
                             modifier = Modifier.testTag("open_drawer_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Menu,
+                                painter = painterResource(id = R.drawable.ic_app_menu),
                                 contentDescription = "Open Drawer"
                             )
                         }
@@ -293,7 +295,7 @@ fun HomeScreen(
                             modifier = Modifier.testTag("search_action_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Search,
+                                painter = painterResource(id = R.drawable.ic_app_search),
                                 contentDescription = "Search"
                             )
                         }
@@ -305,7 +307,7 @@ fun HomeScreen(
                                 modifier = Modifier.testTag("sort_action_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.SwapVert,
+                                    painter = painterResource(id = R.drawable.ic_app_sort),
                                     contentDescription = "Sort Mode"
                                 )
                             }
@@ -437,7 +439,7 @@ fun HomeScreen(
                                 modifier = Modifier.testTag("add_scene_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Add,
+                                    painter = painterResource(id = R.drawable.ic_app_add),
                                     contentDescription = "Add Scene"
                                 )
                             }

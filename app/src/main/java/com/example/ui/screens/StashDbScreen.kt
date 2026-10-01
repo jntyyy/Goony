@@ -38,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -309,7 +311,7 @@ fun StashDbScreen(
                             modifier = Modifier.testTag("drawer_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Menu,
+                                painter = painterResource(id = R.drawable.ic_app_menu),
                                 contentDescription = "Open Drawer",
                                 tint = palette.textPrimary
                             )
@@ -342,7 +344,7 @@ fun StashDbScreen(
                                 modifier = Modifier.testTag("stashdb_header_search_submit")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Search,
+                                    painter = painterResource(id = R.drawable.ic_app_search),
                                     contentDescription = "Search",
                                     tint = accent
                                 )
@@ -377,7 +379,7 @@ fun StashDbScreen(
                             modifier = Modifier.testTag("stashdb_search_action_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Search,
+                                painter = painterResource(id = R.drawable.ic_app_search),
                                 contentDescription = "Search",
                                 tint = palette.textPrimary
                             )
@@ -1263,7 +1265,7 @@ fun StashGridPhotoCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.CalendarToday,
+                        painter = painterResource(id = R.drawable.ic_app_calendar),
                         contentDescription = null,
                         tint = palette.textSecondary,
                         modifier = Modifier.size(13.dp)

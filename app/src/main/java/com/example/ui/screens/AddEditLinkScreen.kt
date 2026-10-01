@@ -33,6 +33,8 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -322,7 +324,7 @@ fun AddEditLinkScreen(
                                 .size(38.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.CalendarMonth,
+                                painter = painterResource(id = R.drawable.ic_app_calendar),
                                 contentDescription = "Select Date",
                                 tint = accent,
                                 modifier = Modifier.size(20.dp)
@@ -513,7 +515,7 @@ fun AddEditLinkScreen(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = Icons.Default.Add,
+                                painter = painterResource(id = R.drawable.ic_app_add),
                                 contentDescription = "Add Actor",
                                 tint = accent,
                                 modifier = Modifier.size(18.dp)
@@ -588,7 +590,7 @@ fun AddEditLinkScreen(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = Icons.Default.Add,
+                                painter = painterResource(id = R.drawable.ic_app_add),
                                 contentDescription = "Add Studio",
                                 tint = accent,
                                 modifier = Modifier.size(18.dp)
@@ -704,7 +706,7 @@ private fun TagMultiSelectDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                Icons.Outlined.Search,
+                                painter = painterResource(id = R.drawable.ic_app_search),
                                 contentDescription = null,
                                 tint = accent,
                                 modifier = Modifier.size(18.dp)
@@ -858,7 +860,7 @@ private fun PasteTrailingIcon(
             .size(38.dp)
     ) {
         Icon(
-            imageVector = Icons.Outlined.ContentPaste,
+            painter = painterResource(id = R.drawable.ic_app_paste),
             contentDescription = "Paste from Clipboard",
             tint = accent,
             modifier = Modifier.size(19.dp)

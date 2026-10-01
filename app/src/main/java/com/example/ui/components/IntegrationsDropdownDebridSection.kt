@@ -23,6 +23,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -223,7 +225,7 @@ fun IntegrationsDropdownDebridSection(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ContentPaste,
+                            painter = painterResource(id = R.drawable.ic_app_paste),
                             contentDescription = "Paste",
                             modifier = Modifier.size(15.dp)
                         )

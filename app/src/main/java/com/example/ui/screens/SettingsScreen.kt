@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -294,7 +296,7 @@ fun SettingsScreen(
                                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.ContentPaste,
+                                            painter = painterResource(id = R.drawable.ic_app_paste),
                                             contentDescription = "Paste",
                                             modifier = Modifier.size(15.dp)
                                         )
@@ -1013,7 +1015,7 @@ private fun SettingsSampleDataSection(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
+                        Icon(painter = painterResource(id = R.drawable.ic_app_add), contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Load Sample")
                     }

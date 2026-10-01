@@ -755,23 +755,7 @@ fun ExoPlayerOverlay(
         )
 
         if (!isInPipMode) {
-            // 2. Center Buffering Indicator
-        if (isBuffering && errorMessage == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.25f)),
-                contentAlignment = Alignment.Center
-            ) {
-                SmoothProgressIndicator(
-                    modifier = Modifier.size(54.dp),
-                    color = LocalAccentColor.current,
-                    strokeWidth = 4.dp
-                )
-            }
-        }
-
-        // 3. Error Overlay
+            // 3. Error Overlay
         if (errorMessage != null) {
             Box(
                 modifier = Modifier
@@ -935,10 +919,10 @@ fun ExoPlayerOverlay(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painter = painterResource(id = R.drawable.ic_player_back),
                             contentDescription = "Back",
                             tint = Color.White,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -1034,7 +1018,7 @@ fun ExoPlayerOverlay(
                                     .testTag("popup_player_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.PictureInPictureAlt,
+                                    painter = painterResource(id = R.drawable.ic_player_pip),
                                     contentDescription = "Pop Up Window / Picture in Picture",
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
@@ -1049,7 +1033,7 @@ fun ExoPlayerOverlay(
                                     .testTag("open_external_player_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.OpenInNew,
+                                    painter = painterResource(id = R.drawable.ic_player_external),
                                     contentDescription = "Open in External Player (MPV/VLC)",
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
@@ -1062,10 +1046,10 @@ fun ExoPlayerOverlay(
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (isLandscape) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
+                                    painter = painterResource(id = if (isLandscape) R.drawable.ic_player_fullscreen_exit else R.drawable.ic_player_fullscreen),
                                     contentDescription = "Rotate Screen",
                                     tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
@@ -1837,22 +1821,6 @@ fun InlineCardPlayer(
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. Buffering Progress Indicator
-        if (isBuffering && errorMessage == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.25f)),
-                contentAlignment = Alignment.Center
-            ) {
-                SmoothProgressIndicator(
-                    modifier = Modifier.size(44.dp),
-                    color = LocalAccentColor.current,
-                    strokeWidth = 3.5.dp
-                )
-            }
-        }
-
         // 3. Playback Error Indicator
         if (errorMessage != null) {
             Box(
@@ -1970,10 +1938,10 @@ fun InlineCardPlayer(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        painter = painterResource(id = R.drawable.ic_player_back),
                         contentDescription = "Back",
                         tint = Color.White,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -2094,7 +2062,7 @@ fun InlineCardPlayer(
                                     .testTag("popup_inline_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.PictureInPictureAlt,
+                                    painter = painterResource(id = R.drawable.ic_player_pip),
                                     contentDescription = "Pop Up Window / Picture in Picture",
                                     tint = Color.White,
                                     modifier = Modifier.size(18.dp)
@@ -2109,7 +2077,7 @@ fun InlineCardPlayer(
                                     .testTag("external_player_inline_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.OpenInNew,
+                                    painter = painterResource(id = R.drawable.ic_player_external),
                                     contentDescription = "Watch in External Player",
                                     tint = Color.White,
                                     modifier = Modifier.size(18.dp)
@@ -2124,10 +2092,10 @@ fun InlineCardPlayer(
                                     .testTag("fullscreen_inline_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Fullscreen,
+                                    painter = painterResource(id = R.drawable.ic_player_fullscreen),
                                     contentDescription = "Fullscreen Landscape Mode",
                                     tint = Color.White,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
