@@ -26,8 +26,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
+import java.util.Locale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
@@ -115,6 +119,8 @@ fun HomeScreen(
     var activeOverlayCardId by remember { mutableStateOf<String?>(null) }
     var showEditActorDialog by remember { mutableStateOf(false) }
     var showEditStudioDialog by remember { mutableStateOf(false) }
+    var showAdjustActorDialog by remember { mutableStateOf(false) }
+    var showAdjustStudioDialog by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = viewModel.homeScrollIndex,
@@ -574,10 +580,29 @@ fun HomeScreen(
             },
             shape = RoundedCornerShape(28.dp),
             title = {
-                Text(
-                    text = "Actor Details",
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Actor Details",
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(
+                        onClick = {
+                            showEditActorDialog = false
+                            showAdjustActorDialog = true
+                        },
+                        modifier = Modifier.testTag("adjust_actor_photo_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Adjust Photo Position & Zoom",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -626,7 +651,7 @@ fun HomeScreen(
                             modifier = Modifier
                                 .size(56.dp)
                                 .clip(CircleShape)
-                                .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
+                                .border(1.5.dp, if (MaterialTheme.colorScheme.background.luminance() > 0.5f) Color.Black else Color.White, CircleShape)
                         ) {
                             if (!targetActor.imageUrl.isNullOrBlank()) {
                                 AsyncImage(
@@ -635,6 +660,12 @@ fun HomeScreen(
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .fillMaxSize()
+                                        .graphicsLayer {
+                                            scaleX = targetActor.imageZoom
+                                            scaleY = targetActor.imageZoom
+                                            translationX = (targetActor.imagePositionX - 50f) * 1.5f
+                                            translationY = (targetActor.imagePositionY - 50f) * 1.5f
+                                        }
                                         .privacyImageBlur(isBetaTest)
                                 )
                                 if (isBetaTest) {
@@ -771,10 +802,29 @@ fun HomeScreen(
             },
             shape = RoundedCornerShape(28.dp),
             title = {
-                Text(
-                    text = "Studio Details",
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Studio Details",
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(
+                        onClick = {
+                            showEditStudioDialog = false
+                            showAdjustStudioDialog = true
+                        },
+                        modifier = Modifier.testTag("adjust_studio_bg_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Adjust Logo Background",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -808,6 +858,10 @@ fun HomeScreen(
 
                     val isBetaTestStudio = LocalBetaTestPrivacy.current
 
+                    val studioBgColor = targetStudio.logoBgColor?.let {
+                        try { Color(android.graphics.Color.parseColor(it)) } catch (_: Exception) { null }
+                    } ?: MaterialTheme.colorScheme.surfaceVariant
+
                     // Circular Preview Section
                     Row(
                         modifier = Modifier
@@ -818,28 +872,34 @@ fun HomeScreen(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            color = studioBgColor,
                             shadowElevation = 2.dp,
                             modifier = Modifier
                                 .size(56.dp)
                                 .clip(CircleShape)
-                                .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
+                                .border(1.5.dp, if (MaterialTheme.colorScheme.background.luminance() > 0.5f) Color.Black else Color.White, CircleShape)
                         ) {
                             if (!targetStudio.logoUrl.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = targetStudio.logoUrl,
-                                    contentDescription = "Preview",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .privacyImageBlur(isBetaTestStudio)
-                                )
-                                if (isBetaTestStudio) {
-                                    Box(
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage(
+                                        model = targetStudio.logoUrl,
+                                        contentDescription = "Preview",
+                                        contentScale = ContentScale.Fit,
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .background(Color.Black.copy(alpha = 0.75f))
+                                            .padding(6.dp)
+                                            .privacyImageBlur(isBetaTestStudio)
                                     )
+                                    if (isBetaTestStudio) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color.Black.copy(alpha = 0.75f))
+                                        )
+                                    }
                                 }
                             } else {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -952,6 +1012,427 @@ fun HomeScreen(
                     shape = CircleShape
                 ) {
                     Text("Close")
+                }
+            }
+        )
+    }
+
+    // ========================================================
+    // ACTOR PHOTO POSITION & ZOOM ADJUSTMENTS DIALOG
+    // ========================================================
+    if (showAdjustActorDialog && targetActor != null) {
+        var posX by remember(targetActor.id, targetActor.imagePositionX) { mutableFloatStateOf(targetActor.imagePositionX) }
+        var posY by remember(targetActor.id, targetActor.imagePositionY) { mutableFloatStateOf(targetActor.imagePositionY) }
+        var zoom by remember(targetActor.id, targetActor.imageZoom) { mutableFloatStateOf(targetActor.imageZoom.coerceIn(0.7f, 3.0f)) }
+        val isBetaTest = LocalBetaTestPrivacy.current
+        val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
+        val circleBorderColor = if (isLight) Color.Black else Color.White
+
+        AlertDialog(
+            onDismissRequest = {
+                showAdjustActorDialog = false
+                showEditActorDialog = true
+            },
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Adjust Photo",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    TextButton(
+                        onClick = {
+                            posX = 50f
+                            posY = 50f
+                            zoom = 1.0f
+                        }
+                    ) {
+                        Text("Reset", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Big Circular Preview (Preview live changes, never bleeds outside circle)
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shadowElevation = 4.dp,
+                        modifier = Modifier
+                            .size(160.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, circleBorderColor, CircleShape)
+                    ) {
+                        if (!targetActor.imageUrl.isNullOrBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = targetActor.imageUrl,
+                                    contentDescription = targetActor.name,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer {
+                                            scaleX = zoom
+                                            scaleY = zoom
+                                            translationX = (posX - 50f) * 2.8f
+                                            translationY = (posY - 50f) * 2.8f
+                                        }
+                                        .privacyImageBlur(isBetaTest)
+                                )
+                                if (isBetaTest) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.75f))
+                                    )
+                                }
+                            }
+                        } else {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_nav_actor),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(64.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // 3 Sliders: X, Y, Zoom (Slim, easy to slide and control)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Slider X
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "X (Horizontal)",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${posX.toInt()}%",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Slider(
+                                value = posX,
+                                onValueChange = { posX = it },
+                                valueRange = 0f..100f,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(28.dp)
+                            )
+                        }
+
+                        // Slider Y
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Y (Vertical)",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${posY.toInt()}%",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Slider(
+                                value = posY,
+                                onValueChange = { posY = it },
+                                valueRange = 0f..100f,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(28.dp)
+                            )
+                        }
+
+                        // Slider Zoom
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Zoom",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = String.format(Locale.US, "%.2fx", zoom),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Slider(
+                                value = zoom,
+                                onValueChange = { zoom = it },
+                                valueRange = 0.7f..3.0f,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(28.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val updatedActor = targetActor.copy(
+                            imagePositionX = posX,
+                            imagePositionY = posY,
+                            imageZoom = zoom
+                        )
+                        viewModel.saveActor(updatedActor)
+                        showAdjustActorDialog = false
+                        showEditActorDialog = true
+                    },
+                    shape = CircleShape
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAdjustActorDialog = false
+                        showEditActorDialog = true
+                    },
+                    shape = CircleShape
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // ========================================================
+    // STUDIO LOGO BACKGROUND GRADIENT DIALOG
+    // ========================================================
+    if (showAdjustStudioDialog && targetStudio != null) {
+        val initialFraction = remember(targetStudio.id, targetStudio.logoBgColor) {
+            val bg = targetStudio.logoBgColor
+            if (bg != null) {
+                try {
+                    val parsed = android.graphics.Color.parseColor(bg)
+                    val r = android.graphics.Color.red(parsed)
+                    val g = android.graphics.Color.green(parsed)
+                    val b = android.graphics.Color.blue(parsed)
+                    ((r + g + b) / 3f) / 255f
+                } catch (_: Exception) {
+                    0.5f
+                }
+            } else {
+                0.0f
+            }
+        }
+        var gradientFraction by remember(targetStudio.id, targetStudio.logoBgColor) { mutableFloatStateOf(initialFraction) }
+        var isCustomBgEnabled by remember(targetStudio.id, targetStudio.logoBgColor) { mutableStateOf(targetStudio.logoBgColor != null) }
+
+        val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
+        val circleBorderColor = if (isLight) Color.Black else Color.White
+        val isBetaTest = LocalBetaTestPrivacy.current
+
+        val currentGray = (gradientFraction * 255).toInt().coerceIn(0, 255)
+        val currentBgColor = if (isCustomBgEnabled) Color(currentGray, currentGray, currentGray) else MaterialTheme.colorScheme.surfaceVariant
+        val hexString = String.format(Locale.US, "#%02X%02X%02X", currentGray, currentGray, currentGray)
+
+        AlertDialog(
+            onDismissRequest = {
+                showAdjustStudioDialog = false
+                showEditStudioDialog = true
+            },
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Logo Background",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    TextButton(
+                        onClick = {
+                            isCustomBgEnabled = false
+                            gradientFraction = 0.0f
+                        }
+                    ) {
+                        Text("Reset", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Big Circular Preview with dynamic background color
+                    Surface(
+                        shape = CircleShape,
+                        color = currentBgColor,
+                        shadowElevation = 4.dp,
+                        modifier = Modifier
+                            .size(160.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, circleBorderColor, CircleShape)
+                    ) {
+                        if (!targetStudio.logoUrl.isNullOrBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .padding(20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = targetStudio.logoUrl,
+                                    contentDescription = targetStudio.name,
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .privacyImageBlur(isBetaTest)
+                                )
+                                if (isBetaTest) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.75f))
+                                    )
+                                }
+                            }
+                        } else {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_nav_studio),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(64.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Gradient Slider from Black to White
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Background (Black to White)",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isCustomBgEnabled) hexString else "Default",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        // Gradient visual track bar
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            Color.Black,
+                                            Color(0xFF333333),
+                                            Color(0xFF666666),
+                                            Color(0xFF999999),
+                                            Color(0xFFCCCCCC),
+                                            Color.White
+                                        )
+                                    )
+                                )
+                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(7.dp))
+                        )
+
+                        // Slim slider controlling shade from Black (0.0) to White (1.0)
+                        Slider(
+                            value = gradientFraction,
+                            onValueChange = {
+                                gradientFraction = it
+                                isCustomBgEnabled = true
+                            },
+                            valueRange = 0f..1f,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(28.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val finalHex = if (isCustomBgEnabled) hexString else null
+                        viewModel.saveStudio(targetStudio.copy(logoBgColor = finalHex))
+                        showAdjustStudioDialog = false
+                        showEditStudioDialog = true
+                    },
+                    shape = CircleShape
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAdjustStudioDialog = false
+                        showEditStudioDialog = true
+                    },
+                    shape = CircleShape
+                ) {
+                    Text("Cancel")
                 }
             }
         )

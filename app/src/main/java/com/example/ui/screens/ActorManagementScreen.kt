@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -224,6 +225,12 @@ fun ActorManagementScreen(
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .fillMaxSize()
+                                            .graphicsLayer {
+                                                scaleX = actor.imageZoom
+                                                scaleY = actor.imageZoom
+                                                translationX = (actor.imagePositionX - 50f) * 1.5f
+                                                translationY = (actor.imagePositionY - 50f) * 1.5f
+                                            }
                                             .privacyImageBlur(isBetaTest)
                                     )
                                     if (isBetaTest) {

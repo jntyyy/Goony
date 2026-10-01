@@ -201,24 +201,35 @@ fun StudioManagementScreen(
                         ) {
                             val isBetaTest = LocalBetaTestPrivacy.current
 
+                            val studioCustomBg = studio.logoBgColor?.let {
+                                try { Color(android.graphics.Color.parseColor(it)) } catch (_: Exception) { null }
+                            } ?: palette.surface
+
                             if (!studio.logoUrl.isNullOrEmpty()) {
-                                AsyncImage(
-                                    model = studio.logoUrl,
-                                    contentDescription = studio.name,
-                                    contentScale = ContentScale.Crop,
+                                Box(
                                     modifier = Modifier
                                         .size(70.dp)
                                         .clip(CircleShape)
-                                        .border(1.5.dp, circleBorderColor, CircleShape)
-                                        .privacyImageBlur(isBetaTest)
-                                )
-                                if (isBetaTest) {
-                                    Box(
+                                        .background(studioCustomBg)
+                                        .border(1.5.dp, circleBorderColor, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage(
+                                        model = studio.logoUrl,
+                                        contentDescription = studio.name,
+                                        contentScale = ContentScale.Fit,
                                         modifier = Modifier
-                                            .size(70.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.Black.copy(alpha = 0.75f))
+                                            .fillMaxSize()
+                                            .padding(6.dp)
+                                            .privacyImageBlur(isBetaTest)
                                     )
+                                    if (isBetaTest) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color.Black.copy(alpha = 0.75f))
+                                        )
+                                    }
                                 }
                             } else {
                                 Box(
